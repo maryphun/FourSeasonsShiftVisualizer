@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "shift-visualize-OCR",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-09-04",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"],
+    "not_found_handling": "single-page-application"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "secrets": {
+    "required": ["GOOGLE_VISION_API_KEY"]
+  }
+}

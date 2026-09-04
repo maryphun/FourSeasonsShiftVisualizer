@@ -8,10 +8,9 @@ The app lets a user upload or drag in a shift photo, sends the image to Google V
 through the local Node server, maps detected text into a table, and builds a cached
 roster database from column A names and the month date columns.
 
-This phase does not store photos, call Cloudflare, or use a backend database yet.
-The parsed roster and selected profile are stored in `localStorage`, so a returning
-user skips upload and profile selection until they clear the cache or import a new photo.
-The spreadsheet preview is hidden by default and can be opened with `Review Spreadsheet`.
+The parsed roster, selected profile, and edited display names are stored in `localStorage`,
+so a returning user skips upload and profile selection until they import a new photo.
+The spreadsheet preview is hidden by default and can be opened with `Manually Edit Data`.
 
 ## Run local Google Vision app
 
@@ -60,3 +59,34 @@ node tools/google-vision-test.mjs "C:\Users\phunm\Downloads\IMG_5315.JPG"
 ```
 
 The script writes raw OCR results to `vision-test-output/`.
+
+## Deploy to Cloudflare
+
+This project deploys as a Cloudflare Worker with Static Assets. Static files are staged
+into `public/`, and `/api/vision` runs from `worker/index.js`.
+
+Install dependencies:
+
+```powershell
+npm.cmd install
+```
+
+Build the safe public asset folder:
+
+```powershell
+npm.cmd run build
+```
+
+Set your Google Vision key as a Cloudflare secret:
+
+```powershell
+npx.cmd wrangler secret put GOOGLE_VISION_API_KEY
+```
+
+Deploy:
+
+```powershell
+npm.cmd run deploy
+```
+
+Cloudflare will give you a free `*.workers.dev` URL after deployment.

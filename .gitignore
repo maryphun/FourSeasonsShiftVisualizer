@@ -1,1 +1,6 @@
 server.local-config.mjs
+node_modules/
+.wrangler/
+.dev.vars*
+.env*
+public/
