@@ -90,3 +90,37 @@ npm.cmd run deploy
 ```
 
 Cloudflare will give you a free `*.workers.dev` URL after deployment.
+
+## Automatic deploy from GitHub
+
+The project includes a GitHub Actions workflow at `.github/workflows/deploy.yml`.
+Every push to `main` will build the public assets and run `npm run deploy`.
+
+Before the first automatic deploy, add these repository secrets in GitHub:
+
+```text
+CLOUDFLARE_ACCOUNT_ID
+CLOUDFLARE_API_TOKEN
+```
+
+In GitHub, open the repository, then go to:
+
+```text
+Settings > Secrets and variables > Actions > New repository secret
+```
+
+Create a Cloudflare API token from:
+
+```text
+Cloudflare Dashboard > My Profile > API Tokens
+```
+
+The token needs permission to deploy Workers, such as `Workers Scripts Edit` on the
+Cloudflare account that owns this Worker.
+
+The Google Vision runtime secret is stored in Cloudflare, not GitHub. If you deploy under
+a new Worker name or a new Cloudflare account, set it again:
+
+```powershell
+npx.cmd wrangler secret put GOOGLE_VISION_API_KEY
+```
