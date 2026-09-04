@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Schedule Photo Reader</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script defer src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script defer src="https://unpkg.com/lucide@latest"></script>
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <div id="app" v-cloak>
+      <main
+        class="app-main"
+        :class="{ 'with-results': (selectedFile || hasDatabase) && !showUploadScreen, 'is-editing': showSpreadsheet }"
+      >
+        <section
+          v-if="showUploadScreen"
+          class="upload-panel"
+          :class="{ 'is-dragging': isDragging }"
+          @dragenter.prevent="setDragging(true)"
+          @dragover.prevent="setDragging(true)"
+          @dragleave.prevent="setDragging(false)"
+          @drop.prevent="handleDrop"
+        >
+          <input
+            ref="fileInput"
+            class="file-input"
+            type="file"
+            accept="image/*"
+            @change="handleFileSelect"
+          />
+
+          <div class="upload-empty">
+            <div class="upload-icon" aria-hidden="true">
+              <i data-lucide="image-up"></i>
+            </div>
+            <div class="upload-actions">
+              <button class="primary-button" type="button" @click="openPicker">
+                <i data-lucide="upload"></i>
+                <span>Upload Photo</span>
+              </button>
+              <button
+                v-if="hasDatabase"
+                class="tool-button upload-return-button"
+                type="button"
+                @click="returnToSchedule"
+              >
+                <i data-lucide="arrow-left"></i>
+                <span>Return to Schedule</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section v-else-if="showSpreadsheet" class="editor-page">
+          <div class="editor-topbar">
+            <button class="tool-button slim" type="button" @click="closeDataEditor">
+              <i data-lucide="arrow-left"></i>
+              <span>Back</span>
+            </button>
+
+            <div class="editor-title">
+              <span>CSV Preview</span>
+              <strong>Manually Edit Data</strong>
+            </div>
+
+            <span v-if="hasTable" class="editor-count">{{ table.length }} rows / {{ columnCount }} columns</span>
+          </div>
+
+          <div class="editor-actions">
+            <button
+              class="primary-button compact"
+              type="button"
+              :disabled="!hasTable"
+              @click="saveTableAsDatabase"
+            >
+              <i data-lucide="save"></i>
+              <span>Save Changes</span>
+            </button>
+            <button class="tool-button" type="button" :disabled="!hasTable" @click="copyCsv">
+              <i data-lucide="clipboard"></i>
+              <span>Copy CSV</span>
+            </button>
+            <button class="tool-button" type="button" :disabled="!hasTable" @click="downloadCsv">
+              <i data-lucide="download"></i>
+              <span>Download CSV</span>
+            </button>
+          </div>
+
+          <section class="sheet-card editor-sheet">
+            <div class="sheet-topline">
+              <strong>{{ rosterMonthLabel || "Roster Data" }}</strong>
+              <span v-if="hasTable">{{ table.length }} rows, {{ columnCount }} columns</span>
+            </div>
+
+            <div v-if="!hasTable" class="empty-result">
+              <i data-lucide="table-2"></i>
+            </div>
+
+            <div v-else class="sheet-scroll">
+              <table class="sheet-table" :style="{ minWidth: `${46 + columnCount * 88}px` }">
+                <thead>
+                  <tr>
+                    <th class="corner-cell"></th>
+                    <th v-for="columnIndex in columnCount" :key="`h-${columnIndex}`">
+                      {{ columnLabel(columnIndex - 1) }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, rowIndex) in normalizedTable" :key="`r-${rowIndex}`">
+                    <th class="row-head">{{ rowIndex + 1 }}</th>
+                    <td v-for="(_, cellIndex) in columnCount" :key="`c-${rowIndex}-${cellIndex}`">
+                      <input
+                        v-model="table[rowIndex][cellIndex]"
+                        :aria-label="`Row ${rowIndex + 1}, column ${columnLabel(cellIndex)}`"
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section v-else class="app-shell">
+          <input
+            ref="fileInput"
+            class="file-input"
+            type="file"
+            accept="image/*"
+            @change="handleFileSelect"
+          />
+
+          <div class="app-toolbar">
+            <button class="tool-button" type="button" @click="replacePhoto">
+              <i data-lucide="image-plus"></i>
+              <span>Upload New Shift Photo</span>
+            </button>
+            <button
+              v-if="selectedFile"
+              class="tool-button"
+              type="button"
+              :disabled="isProcessing"
+              @click="readPhoto"
+            >
+              <i data-lucide="scan-text"></i>
+              <span>Read Again</span>
+            </button>
+            <button
+              v-if="hasTable"
+              class="tool-button"
+              type="button"
+              :disabled="isProcessing"
+              @click="openDataEditor"
+            >
+              <i data-lucide="table-2"></i>
+              <span>Manually Edit Data</span>
+            </button>
+          </div>
+
+          <div v-if="showStatusPanel" class="status-panel">
+            <div class="status-row">
+              <span class="status-dot" :class="{ active: isProcessing }" aria-hidden="true"></span>
+              <strong>{{ statusText }}</strong>
+            </div>
+            <div v-if="needsCredential" class="credential-row">
+              <input
+                v-model.trim="googleApiKey"
+                type="password"
+                autocomplete="off"
+                placeholder="Google Vision API key"
+                aria-label="Google Vision API key"
+              />
+            </div>
+            <div class="progress-track" aria-hidden="true">
+              <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
+            </div>
+          </div>
+
+          <section
+            v-if="hasDatabase && !selectedProfile"
+            class="profile-panel"
+          >
+            <div class="profile-heading">
+              <strong>Who are you?</strong>
+              <span>{{ rosterMonthLabel }}</span>
+            </div>
+
+            <div v-if="pickerProfile" class="profile-carousel">
+              <button
+                class="carousel-arrow"
+                type="button"
+                :disabled="profiles.length <= 1 || Boolean(profileTransitionDirection)"
+                aria-label="Previous profile"
+                @click="previousProfile"
+              >
+                <i data-lucide="chevron-left"></i>
+              </button>
+
+              <div
+                class="carousel-viewport"
+                :class="profileStageClass"
+                :style="profileStageStyle"
+              >
+                <div
+                  v-for="item in profileCarouselItems"
+                  :key="`${item.slot}-${item.profile.id}`"
+                  class="identity-picker-card carousel-card"
+                  :class="`is-${item.slot}`"
+                  @click="handleProfileCardClick(item.slot)"
+                  @pointerdown.stop="startProfileSwipe"
+                  @pointermove.stop="moveProfileSwipe"
+                  @pointerup.stop="finishProfileSwipe"
+                  @pointercancel.stop="cancelProfileSwipe"
+                >
+                  <span class="avatar large">{{ profileInitials(displayProfileName(item.profile)) }}</span>
+                  <div>
+                    <strong>{{ displayProfileName(item.profile) }}</strong>
+                    <span>{{ profileShiftCount(item.profile) }} shifts</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                class="carousel-arrow"
+                type="button"
+                :disabled="profiles.length <= 1 || Boolean(profileTransitionDirection)"
+                aria-label="Next profile"
+                @click="nextProfile"
+              >
+                <i data-lucide="chevron-right"></i>
+              </button>
+            </div>
+
+            <div class="profile-footer">
+              <div class="carousel-dots" aria-hidden="true">
+                <span
+                  v-for="(_, profileIndex) in profiles"
+                  :key="`dot-${profileIndex}`"
+                  :class="{ active: profileIndex === profilePickerIndex }"
+                ></span>
+              </div>
+
+              <button class="primary-button compact" type="button" @click="selectPickerProfile">
+                <i data-lucide="check"></i>
+                <span>This is me</span>
+              </button>
+            </div>
+
+          </section>
+
+          <section v-else-if="selectedProfile" class="schedule-panel">
+            <div class="schedule-hero">
+              <div class="schedule-topbar">
+                <div class="schedule-person">
+                  <span class="avatar large">{{ profileInitials(displayProfileName(selectedProfile)) }}</span>
+                  <div class="schedule-person-copy">
+                    <span>{{ rosterMonthLabel }}</span>
+                    <div class="name-line">
+                      <strong>{{ displayProfileName(selectedProfile) }}</strong>
+                      <button
+                        class="name-edit-button"
+                        type="button"
+                        :aria-label="`Edit ${displayProfileName(selectedProfile)}`"
+                        @click="openNameEditor(selectedProfile)"
+                      >
+                        <i data-lucide="pencil"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <button class="tool-button slim" type="button" @click="changeProfile">
+                  <i data-lucide="users"></i>
+                  <span>Change</span>
+                </button>
+              </div>
+
+            </div>
+
+            <div v-if="activeShift" class="day-card-section">
+              <div class="day-section-header">
+                <small>{{ selectedShiftIndex + 1 }} / {{ selectedProfile.shifts.length }}</small>
+              </div>
+
+              <div class="day-carousel">
+                <button
+                  class="carousel-arrow day-arrow"
+                  type="button"
+                  :disabled="selectedProfile.shifts.length <= 1 || Boolean(dayTransitionDirection) || dayIsFastTraveling"
+                  aria-label="Previous day"
+                  @click="previousDay"
+                >
+                  <i data-lucide="chevron-left"></i>
+                </button>
+
+                <div class="day-carousel-viewport" :class="dayStageClass" :style="dayStageStyle">
+                  <article
+                    v-for="item in dayCarouselItems"
+                    :key="`${item.slot}-${item.shift.dateKey || item.shift.dateLabel}`"
+                    class="day-shift-card day-carousel-card"
+                    :class="[shiftClass(item.shift), `is-${item.slot}`]"
+                    @click="handleDayCardClick(item.slot)"
+                    @pointerdown.stop="startDaySwipe"
+                    @pointermove.stop="moveDaySwipe"
+                    @pointerup.stop="finishDaySwipe"
+                    @pointercancel.stop="cancelDaySwipe"
+                  >
+                    <div class="day-card-topline">
+                      <span>{{ shiftRelativeLabel(item.shift) }}</span>
+                      <small>{{ item.shift.dateLabel }}</small>
+                    </div>
+
+                    <div class="day-card-main">
+                      <time>
+                        <strong>{{ item.shift.day }}</strong>
+                        <span>{{ item.shift.weekday }}</span>
+                      </time>
+                      <strong>{{ displayShift(item.shift.value) }}</strong>
+                    </div>
+
+                    <div class="day-card-action">
+                      <button
+                        v-if="item.slot === 'active' && otherWorkingCount(item.shift)"
+                        class="coworker-button"
+                        type="button"
+                        @pointerdown.stop
+                        @click.stop="openCoworkerModal(item.shift)"
+                      >
+                        {{ otherWorkingCount(item.shift) }} other persons
+                      </button>
+                      <span
+                        v-else-if="otherWorkingCount(item.shift)"
+                        class="coworker-count-label"
+                      >
+                        {{ otherWorkingCount(item.shift) }} other persons
+                      </span>
+                    </div>
+                  </article>
+                </div>
+
+                <button
+                  class="carousel-arrow day-arrow"
+                  type="button"
+                  :disabled="selectedProfile.shifts.length <= 1 || Boolean(dayTransitionDirection) || dayIsFastTraveling"
+                  aria-label="Next day"
+                  @click="nextDay"
+                >
+                  <i data-lucide="chevron-right"></i>
+                </button>
+              </div>
+
+              <div class="day-pills" aria-label="Month days">
+                <button
+                  v-for="(shift, shiftIndex) in selectedProfile.shifts"
+                  :key="`pill-${shift.dateKey || shift.dateLabel}`"
+                  class="day-pill"
+                  :class="{
+                    active: shiftIndex === selectedShiftIndex,
+                    today: shift.dateKey === todayDateKey,
+                    leave: isLeaveShift(shift.value)
+                  }"
+                  type="button"
+                  @click="selectDay(shiftIndex)"
+                >
+                  {{ shift.day }}
+                </button>
+              </div>
+
+              <div class="summary-strip monthly-summary" aria-label="This month's totals">
+                <div>
+                  <strong>{{ selectedProfile.shifts.length }}</strong>
+                  <span>Days</span>
+                </div>
+                <div>
+                  <strong>{{ profileShiftCount(selectedProfile) }}</strong>
+                  <span>Shifts</span>
+                </div>
+                <div>
+                  <strong>{{ profileOffCount(selectedProfile) }}</strong>
+                  <span>Leaves</span>
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="empty-result dark-empty">
+              <i data-lucide="calendar-x"></i>
+            </div>
+          </section>
+
+          <section v-if="!hasDatabase && !selectedFile" class="profile-panel">
+            <div class="panel-heading">
+              <div>
+                <span>No cached roster</span>
+                <strong>Upload Photo</strong>
+              </div>
+            </div>
+            <div class="empty-action">
+              <button class="primary-button" type="button" @click="openPicker">
+                <i data-lucide="upload"></i>
+                <span>Upload Photo</span>
+              </button>
+            </div>
+          </section>
+        </section>
+      </main>
+
+      <div
+        v-if="coworkerModalShift"
+        class="modal-backdrop"
+        role="presentation"
+        @click.self="closeCoworkerModal"
+      >
+        <section
+          class="coworker-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="coworker-modal-title"
+        >
+          <div class="coworker-modal-head">
+            <div>
+              <span>{{ coworkerModalTitle }}</span>
+              <strong id="coworker-modal-title">{{ coworkerModalWorkers.length }} other persons</strong>
+            </div>
+            <button class="icon-button" type="button" aria-label="Close" @click="closeCoworkerModal">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+
+          <div v-if="coworkerModalWorkers.length" class="coworker-list">
+            <article v-for="worker in coworkerModalWorkers" :key="worker.id" class="coworker-row">
+              <span class="avatar">{{ worker.initials }}</span>
+              <div class="coworker-name-line">
+                <strong>{{ worker.name }}</strong>
+                <button
+                  class="name-edit-button small"
+                  type="button"
+                  :aria-label="`Edit ${worker.name}`"
+                  @click.stop="openNameEditor(worker.profile)"
+                >
+                  <i data-lucide="pencil"></i>
+                </button>
+              </div>
+              <time>{{ worker.time }}</time>
+            </article>
+          </div>
+
+          <div v-else class="coworker-empty">
+            <span>No other persons</span>
+          </div>
+        </section>
+      </div>
+
+      <div
+        v-if="nameEditorProfile"
+        class="modal-backdrop name-editor-backdrop"
+        role="presentation"
+        @click.self="closeNameEditor"
+      >
+        <section
+          class="name-editor-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="name-editor-title"
+        >
+          <div class="coworker-modal-head">
+            <div>
+              <span>Default: {{ nameEditorProfile.name }}</span>
+              <strong id="name-editor-title">Edit Name</strong>
+            </div>
+            <button class="icon-button" type="button" aria-label="Close" @click="closeNameEditor">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+
+          <form class="name-editor-body" @submit.prevent="saveEditedName">
+            <label class="name-editor-field">
+              <span>Name</span>
+              <input
+                ref="nameEditorInput"
+                v-model="nameEditorValue"
+                type="text"
+                autocomplete="off"
+              />
+            </label>
+
+            <div class="name-editor-actions">
+              <button
+                v-if="isEditedProfileName(nameEditorProfile)"
+                class="tool-button slim"
+                type="button"
+                @click="revertEditedName"
+              >
+                <i data-lucide="rotate-ccw"></i>
+                <span>Revert Default</span>
+              </button>
+              <button class="primary-button compact" type="submit">
+                <i data-lucide="save"></i>
+                <span>Save Name</span>
+              </button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>
