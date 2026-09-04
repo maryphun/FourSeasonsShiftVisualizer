@@ -285,9 +285,11 @@ img {
 
 .app-shell {
   width: 100%;
-  display: grid;
+  min-height: calc(100svh - clamp(36px, 12svh, 84px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 12px;
-  align-content: start;
 }
 
 .app-toolbar {
@@ -296,7 +298,7 @@ img {
   justify-content: center;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 0 auto;
+  margin: auto auto 0;
 }
 
 .app-toolbar button {

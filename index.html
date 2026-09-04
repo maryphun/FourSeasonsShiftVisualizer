@@ -138,33 +138,6 @@
             @change="handleFileSelect"
           />
 
-          <div class="app-toolbar">
-            <button class="tool-button" type="button" @click="replacePhoto">
-              <i data-lucide="image-plus"></i>
-              <span>Upload New Shift Photo</span>
-            </button>
-            <button
-              v-if="selectedFile"
-              class="tool-button"
-              type="button"
-              :disabled="isProcessing"
-              @click="readPhoto"
-            >
-              <i data-lucide="scan-text"></i>
-              <span>Read Again</span>
-            </button>
-            <button
-              v-if="hasTable"
-              class="tool-button"
-              type="button"
-              :disabled="isProcessing"
-              @click="openDataEditor"
-            >
-              <i data-lucide="table-2"></i>
-              <span>Manually Edit Data</span>
-            </button>
-          </div>
-
           <div v-if="showStatusPanel" class="status-panel">
             <div class="status-row">
               <span class="status-dot" :class="{ active: isProcessing }" aria-hidden="true"></span>
@@ -408,6 +381,33 @@
               </button>
             </div>
           </section>
+
+          <div class="app-toolbar">
+            <button class="tool-button" type="button" @click="replacePhoto">
+              <i data-lucide="image-plus"></i>
+              <span>Upload New Shift Photo</span>
+            </button>
+            <button
+              v-if="selectedFile"
+              class="tool-button"
+              type="button"
+              :disabled="isProcessing"
+              @click="readPhoto"
+            >
+              <i data-lucide="scan-text"></i>
+              <span>Read Again</span>
+            </button>
+            <button
+              v-if="hasTable"
+              class="tool-button"
+              type="button"
+              :disabled="isProcessing"
+              @click="openDataEditor"
+            >
+              <i data-lucide="table-2"></i>
+              <span>Manually Edit Data</span>
+            </button>
+          </div>
         </section>
       </main>
 
