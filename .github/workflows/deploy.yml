@@ -39,7 +39,12 @@ jobs:
         run: npm ci
 
       - name: Deploy
-        run: npm run deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GOOGLE_VISION_API_KEY: ${{ secrets.GOOGLE_VISION_API_KEY }}
+        run: |
+          printf 'GOOGLE_VISION_API_KEY=%s\n' "$GOOGLE_VISION_API_KEY" > .production.secrets
+          npm run build
+          npx wrangler deploy --secrets-file .production.secrets
+          rm -f .production.secrets
