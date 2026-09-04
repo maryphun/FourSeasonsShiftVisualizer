@@ -4,6 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Schedule Photo Reader</title>
+    <meta name="theme-color" content="#0a1724" />
+    <link rel="icon" type="image/png" href="assets/app-icon.png" />
+    <link rel="apple-touch-icon" href="assets/app-icon.png" />
+    <link rel="manifest" href="site.webmanifest" />
     <link rel="stylesheet" href="styles.css" />
     <script defer src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script defer src="https://unpkg.com/lucide@latest"></script>
@@ -33,8 +37,8 @@
           />
 
           <div class="upload-empty">
-            <div class="upload-icon" aria-hidden="true">
-              <i data-lucide="image-up"></i>
+            <div class="upload-thumbnail" aria-hidden="true">
+              <img src="assets/upload-thumbnail.jpg" alt="" />
             </div>
             <div class="upload-actions">
               <button class="primary-button" type="button" @click="openPicker">

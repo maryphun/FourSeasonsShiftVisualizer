@@ -149,6 +149,24 @@ img {
   height: 34px;
 }
 
+.upload-thumbnail {
+  width: 108px;
+  height: 108px;
+  overflow: hidden;
+  border: 1px solid rgba(216, 217, 213, 0.24);
+  border-radius: 8px;
+  background: var(--panel-2);
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.upload-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .upload-actions {
   width: min(100%, 320px);
   display: grid;
