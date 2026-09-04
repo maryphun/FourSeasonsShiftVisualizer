@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "shift-visualize-OCR",
+  "name": "shift-visualize-ocr",
   "main": "worker/index.js",
   "compatibility_date": "2026-09-04",
   "assets": {
