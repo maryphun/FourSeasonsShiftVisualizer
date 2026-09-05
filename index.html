@@ -295,10 +295,12 @@
                     @click="handleDayCardClick(item.slot)"
                   >
                     <img
-                      class="day-off-panda"
-                      src="assets/app-icon.png"
+                      v-if="shiftPandaSrc(item.shift.value)"
+                      class="day-shift-panda"
+                      :src="shiftPandaSrc(item.shift.value)"
                       alt=""
                       aria-hidden="true"
+                      draggable="false"
                     />
 
                     <div class="day-card-topline">
@@ -309,7 +311,7 @@
                     <div class="day-card-main">
                       <time>
                         <strong>{{ item.shift.day }}</strong>
-                        <span>{{ item.shift.weekday }}</span>
+                        <span>{{ japaneseWeekdayLabel(item.shift.weekday) }}</span>
                       </time>
                       <strong>{{ displayShift(item.shift.value) }}</strong>
                     </div>
@@ -374,6 +376,18 @@
                 <div>
                   <strong>{{ profileOffCount(selectedProfile) }}</strong>
                   <span>Leaves</span>
+                </div>
+                <div>
+                  <strong>{{ profileMorningShiftCount(selectedProfile) }}</strong>
+                  <span>Morning</span>
+                </div>
+                <div>
+                  <strong>{{ profileEveningShiftCount(selectedProfile) }}</strong>
+                  <span>Evening</span>
+                </div>
+                <div>
+                  <strong>{{ profileLateShiftCount(selectedProfile) }}</strong>
+                  <span>Late</span>
                 </div>
               </div>
             </div>

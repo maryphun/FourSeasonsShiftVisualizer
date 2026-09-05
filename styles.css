@@ -835,23 +835,23 @@ img {
 .summary-strip {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 8px;
   background: transparent;
 }
 
 .monthly-summary {
-  padding: 0 16px 4px;
+  padding: 0 16px 8px;
 }
 
 .summary-strip div {
   min-width: 0;
   display: grid;
   gap: 2px;
-  min-height: 78px;
+  min-height: 54px;
   align-content: center;
   border: 1px solid rgba(216, 217, 213, 0.16);
   border-radius: 8px;
-  padding: 12px;
+  padding: 8px 10px;
   background:
     linear-gradient(180deg, rgba(216, 217, 213, 0.08), rgba(216, 217, 213, 0.035)),
     rgba(10, 23, 36, 0.24);
@@ -862,13 +862,13 @@ img {
 
 .summary-strip strong {
   color: var(--white);
-  font-size: 1.5rem;
+  font-size: clamp(1.18rem, 5vw, 1.42rem);
   line-height: 1;
 }
 
 .summary-strip span {
   color: var(--steel-soft);
-  font-size: 0.74rem;
+  font-size: 0.66rem;
   font-weight: 850;
   text-transform: uppercase;
 }
@@ -976,25 +976,27 @@ img {
   cursor: grabbing;
 }
 
-.day-off-panda {
+.day-shift-panda {
   position: absolute;
-  top: 9px;
-  right: 9px;
+  top: 10px;
+  right: 10px;
   z-index: 2;
-  width: 34px;
-  height: 34px;
-  display: none;
-  border: 1px solid rgba(255, 246, 216, 0.64);
-  border-radius: 999px;
-  padding: 3px;
-  background: rgba(255, 246, 216, 0.92);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
-  object-fit: cover;
+  width: 42px;
+  height: 52px;
+  border: 1px solid rgba(216, 217, 213, 0.58);
+  border-radius: 12px;
+  padding: 2px;
+  background: rgba(238, 240, 237, 0.94);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.2);
+  object-fit: contain;
+  object-position: center;
   pointer-events: none;
+  user-select: none;
 }
 
-.day-shift-card.is-off .day-off-panda {
-  display: block;
+.day-shift-card.is-off .day-shift-panda {
+  border-color: rgba(255, 246, 216, 0.72);
+  background: rgba(255, 246, 216, 0.94);
 }
 
 .day-card-topline {
@@ -1005,8 +1007,8 @@ img {
   gap: 10px;
 }
 
-.day-shift-card.is-off .day-card-topline {
-  padding-right: 42px;
+.day-shift-card.has-shift-art .day-card-topline {
+  padding-right: 52px;
 }
 
 .day-card-topline span,
@@ -2066,15 +2068,15 @@ img {
     padding: 12px;
   }
 
-  .day-off-panda {
+  .day-shift-panda {
     top: 8px;
     right: 8px;
-    width: 30px;
-    height: 30px;
+    width: 36px;
+    height: 46px;
   }
 
-  .day-shift-card.is-off .day-card-topline {
-    padding-right: 36px;
+  .day-shift-card.has-shift-art .day-card-topline {
+    padding-right: 44px;
   }
 
   .day-card-main {

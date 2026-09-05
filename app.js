@@ -7,6 +7,11 @@ const DAY_TRANSITION_MS = 260;
 const DAY_FAST_TRANSITION_MS = 36;
 const DAY_FAST_FRAME_GAP_MS = 6;
 const DAY_FAST_MAX_HOPS = 6;
+const SHIFT_PANDA_IMAGES = Object.freeze({
+  work: "assets/shift-panda-work.png",
+  late: "assets/shift-panda-late.png",
+  off: "assets/shift-panda-off.png",
+});
 
 createApp({
   data() {
@@ -633,6 +638,15 @@ createApp({
     profileOffCount(profile) {
       return (profile?.shifts || []).filter((shift) => isNonWorkingShift(shift.value)).length;
     },
+    profileMorningShiftCount(profile) {
+      return profileShiftTypeCount(profile, "morning");
+    },
+    profileEveningShiftCount(profile) {
+      return profileShiftTypeCount(profile, "evening");
+    },
+    profileLateShiftCount(profile) {
+      return profileShiftTypeCount(profile, "late");
+    },
     profileInitials(name) {
       const base = cleanProfileName(name).replace(/\([^)]*\)/g, "").trim();
       const initials = base
@@ -687,13 +701,24 @@ createApp({
       if (shift.dateKey === offsetDateKey(-1)) return "Yesterday";
       return shift.weekday || "Shift";
     },
+    japaneseWeekdayLabel(weekday) {
+      return japaneseWeekdayLabel(weekday);
+    },
     isLeaveShift(value) {
       return isNonWorkingShift(value);
     },
+    shiftPandaSrc(value) {
+      return getShiftPandaSrc(value);
+    },
     shiftClass(shift) {
+      const type = getShiftType(shift.value);
       return {
         "is-work": isWorkShift(shift.value),
         "is-off": isNonWorkingShift(shift.value),
+        "is-morning": type === "morning",
+        "is-evening": type === "evening",
+        "is-late": type === "late",
+        "has-shift-art": Boolean(getShiftPandaSrc(shift.value)),
         "is-today": shift.dateKey === this.todayDateKey,
       };
     },
@@ -1167,6 +1192,20 @@ function shortWeekday(date) {
   return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getDay()];
 }
 
+function japaneseWeekdayLabel(weekday) {
+  const labels = new Map([
+    ["sun", "日"],
+    ["mon", "月"],
+    ["tue", "火"],
+    ["wed", "水"],
+    ["thu", "木"],
+    ["fri", "金"],
+    ["sat", "土"],
+  ]);
+  const key = String(weekday || "").trim().slice(0, 3).toLowerCase();
+  return labels.get(key) || weekday || "";
+}
+
 function formatDateKey(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -1233,6 +1272,58 @@ function isNonWorkingShift(value) {
   return ["OFF", "ROFF", "AL", "SAL", "/"].includes(shift);
 }
 
+function profileShiftTypeCount(profile, type) {
+  return (profile?.shifts || []).filter((shift) => getShiftType(shift.value) === type).length;
+}
+
+function getShiftPandaSrc(value) {
+  const type = getShiftType(value);
+  if (type === "off") return SHIFT_PANDA_IMAGES.off;
+  if (type === "late") return SHIFT_PANDA_IMAGES.late;
+  if (type === "morning" || type === "evening" || type === "work") {
+    return SHIFT_PANDA_IMAGES.work;
+  }
+  return "";
+}
+
+function getShiftType(value) {
+  if (isNonWorkingShift(value)) return "off";
+  if (!isWorkShift(value)) return "";
+
+  const startHour = shiftStartHour(value);
+  if (!Number.isFinite(startHour)) return "work";
+  if (startHour < 12) return "morning";
+  if (startHour > 18) return "late";
+  return "evening";
+}
+
+function shiftStartHour(value) {
+  const match = String(value || "").trim().match(/\d{1,2}(?::\d{1,2}|\.\d+)?/);
+  if (!match) return Number.NaN;
+
+  const token = match[0];
+  if (token.includes(":")) {
+    const [hourPart, minutePart] = token.split(":");
+    const hours = Number(hourPart);
+    const minutes = Number(minutePart);
+    if (
+      !Number.isFinite(hours) ||
+      !Number.isFinite(minutes) ||
+      hours < 0 ||
+      hours > 24 ||
+      minutes < 0 ||
+      minutes >= 60
+    ) {
+      return Number.NaN;
+    }
+
+    return hours + minutes / 60;
+  }
+
+  const numeric = Number(token);
+  return Number.isFinite(numeric) && numeric >= 0 && numeric <= 24 ? numeric : Number.NaN;
+}
+
 function findMatchingShift(shifts, targetShift) {
   if (!Array.isArray(shifts) || !targetShift) return null;
 
@@ -1245,9 +1336,8 @@ function findMatchingShift(shifts, targetShift) {
 }
 
 function shiftSortValue(value) {
-  const match = String(value || "").match(/\d{1,2}(?:\.\d+)?/);
-  if (!match) return Number.POSITIVE_INFINITY;
-  return Number(match[0]);
+  const startHour = shiftStartHour(value);
+  return Number.isFinite(startHour) ? startHour : Number.POSITIVE_INFINITY;
 }
 
 function formatShiftForDisplay(value) {
