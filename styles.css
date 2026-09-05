@@ -335,6 +335,14 @@ img {
 
 .app-toolbar button {
   flex: 0 0 auto;
+  gap: 7px;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.app-toolbar button span {
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .danger-button {
@@ -1869,6 +1877,8 @@ img {
     width: 100%;
     min-height: 44px;
     padding-inline: 8px;
+    gap: 6px;
+    font-size: 0.76rem;
   }
 
   .profile-panel {
