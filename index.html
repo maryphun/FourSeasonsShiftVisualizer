@@ -658,28 +658,107 @@
           </div>
 
           <form class="name-editor-body shift-editor-body" @submit.prevent="saveShiftEdit">
-            <label class="name-editor-field">
-              <span>Shift</span>
-              <input
-                ref="shiftEditorInput"
-                v-model="shiftEditorValue"
-                type="text"
-                maxlength="40"
-                autocomplete="off"
-                inputmode="text"
-              />
-            </label>
+            <section class="shift-editor-section">
+              <span class="shift-editor-label">Status</span>
+              <div class="shift-mode-toggle" role="radiogroup" aria-label="Shift status">
+                <button
+                  type="button"
+                  :class="{ active: shiftEditorMode === 'work' }"
+                  :aria-pressed="shiftEditorMode === 'work'"
+                  @click="setShiftEditorMode('work')"
+                >
+                  <i data-lucide="briefcase"></i>
+                  <span>Work</span>
+                </button>
+                <button
+                  type="button"
+                  :class="{ active: shiftEditorMode === 'off' }"
+                  :aria-pressed="shiftEditorMode === 'off'"
+                  @click="setShiftEditorMode('off')"
+                >
+                  <i data-lucide="moon"></i>
+                  <span>OFF</span>
+                </button>
+              </div>
+            </section>
+
+            <section v-if="shiftEditorMode === 'off'" class="shift-editor-section">
+              <span class="shift-editor-label">Leave Type</span>
+              <label class="shift-al-toggle">
+                <input v-model="shiftEditorIsAl" type="checkbox" />
+                <span class="shift-switch-track" aria-hidden="true">
+                  <span></span>
+                </span>
+                <strong>AL</strong>
+              </label>
+            </section>
+
+            <template v-else>
+              <section class="shift-editor-section">
+                <span class="shift-editor-label">Start Time</span>
+                <div class="shift-time-picker" aria-label="Start time">
+                  <div class="shift-wheel-column">
+                    <small>Hour</small>
+                    <div
+                      class="shift-time-wheel"
+                      tabindex="0"
+                      @scroll.passive="handleShiftWheelScroll('hour', $event)"
+                    >
+                      <button
+                        v-for="hour in shiftEditorHours"
+                        :key="`hour-${hour}`"
+                        type="button"
+                        :data-value="hour"
+                        :class="{ active: shiftEditorHour === hour }"
+                        @click="setShiftEditorTime('hour', hour)"
+                      >
+                        {{ hour }}
+                      </button>
+                    </div>
+                  </div>
+
+                  <strong class="shift-time-separator">:</strong>
+
+                  <div class="shift-wheel-column">
+                    <small>Minute</small>
+                    <div
+                      class="shift-time-wheel minute-wheel"
+                      tabindex="0"
+                      @scroll.passive="handleShiftWheelScroll('minute', $event)"
+                    >
+                      <button
+                        v-for="minute in shiftEditorMinutes"
+                        :key="`minute-${minute}`"
+                        type="button"
+                        :data-value="minute"
+                        :class="{ active: shiftEditorMinute === minute }"
+                        @click="setShiftEditorTime('minute', minute)"
+                      >
+                        {{ minute }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <label class="name-editor-field shift-context-field">
+                <span>Context</span>
+                <input
+                  v-model="shiftEditorContext"
+                  type="text"
+                  maxlength="24"
+                  autocomplete="off"
+                  placeholder="Optional, e.g. CDT or TR"
+                />
+              </label>
+            </template>
+
+            <div class="shift-editor-preview" aria-live="polite">
+              <span>Saved as</span>
+              <strong>{{ shiftEditorPreview }}</strong>
+            </div>
 
             <div class="name-editor-actions">
-              <button
-                v-if="shiftEditorValue"
-                class="tool-button slim"
-                type="button"
-                @click="clearShiftEditorValue"
-              >
-                <i data-lucide="eraser"></i>
-                <span>Clear Shift</span>
-              </button>
               <button class="primary-button compact" type="submit">
                 <i data-lucide="save"></i>
                 <span>Save Shift</span>

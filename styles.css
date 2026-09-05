@@ -1571,6 +1571,221 @@ img {
   z-index: 60;
 }
 
+.name-editor-modal.shift-editor-modal {
+  width: min(420px, calc(100vw - 24px));
+  max-height: min(660px, calc(100svh - 24px));
+  max-height: min(660px, calc(100dvh - 24px));
+}
+
+.shift-editor-body {
+  gap: 16px;
+}
+
+.shift-editor-section {
+  min-width: 0;
+  display: grid;
+  gap: 9px;
+}
+
+.shift-editor-label {
+  color: var(--steel-soft);
+  font-size: 0.76rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.shift-mode-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  border: 1px solid rgba(216, 217, 213, 0.12);
+  border-radius: 999px;
+  padding: 5px;
+  background: rgba(10, 23, 36, 0.58);
+}
+
+.shift-mode-toggle button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--steel-soft);
+  font-size: 0.92rem;
+  font-weight: 850;
+}
+
+.shift-mode-toggle button.active {
+  background:
+    linear-gradient(180deg, rgba(125, 150, 179, 0.9), rgba(75, 101, 132, 0.94)),
+    var(--steel);
+  color: var(--white);
+  box-shadow:
+    0 10px 18px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.shift-mode-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.shift-al-toggle {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(216, 217, 213, 0.14);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(216, 217, 213, 0.06);
+}
+
+.shift-al-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.shift-switch-track {
+  width: 48px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px;
+  background: rgba(10, 23, 36, 0.74);
+  border: 1px solid rgba(216, 217, 213, 0.16);
+}
+
+.shift-switch-track span {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--mist);
+  transition: transform 150ms ease, background-color 150ms ease;
+}
+
+.shift-al-toggle input:checked + .shift-switch-track {
+  background: rgba(255, 231, 147, 0.34);
+  border-color: rgba(255, 231, 147, 0.52);
+}
+
+.shift-al-toggle input:checked + .shift-switch-track span {
+  transform: translateX(20px);
+  background: #ffe793;
+}
+
+.shift-al-toggle strong {
+  color: var(--white);
+  font-size: 1rem;
+}
+
+.shift-time-picker {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
+  border: 1px solid rgba(216, 217, 213, 0.14);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(10, 23, 36, 0.48);
+}
+
+.shift-wheel-column {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.shift-wheel-column small {
+  color: var(--steel-soft);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.shift-time-wheel {
+  position: relative;
+  height: 144px;
+  overflow-y: auto;
+  display: grid;
+  gap: 6px;
+  padding-block: 51px;
+  border-radius: 8px;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  background:
+    linear-gradient(180deg, rgba(17, 30, 48, 0.94), rgba(17, 30, 48, 0) 32%, rgba(17, 30, 48, 0) 68%, rgba(17, 30, 48, 0.94)),
+    rgba(216, 217, 213, 0.04);
+}
+
+.shift-time-wheel::-webkit-scrollbar {
+  display: none;
+}
+
+.shift-time-wheel button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(216, 217, 213, 0.42);
+  font-size: 1.36rem;
+  font-weight: 850;
+  scroll-snap-align: center;
+  transition: background-color 120ms ease, color 120ms ease, transform 120ms ease;
+}
+
+.shift-time-wheel button.active {
+  background: rgba(125, 150, 179, 0.2);
+  color: var(--white);
+  transform: scale(1.06);
+}
+
+.shift-time-separator {
+  align-self: center;
+  color: var(--white);
+  font-size: 2rem;
+  line-height: 1;
+  padding-top: 18px;
+}
+
+.shift-context-field input::placeholder {
+  color: rgba(216, 217, 213, 0.38);
+}
+
+.shift-editor-preview {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(125, 150, 179, 0.22);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(216, 217, 213, 0.05);
+}
+
+.shift-editor-preview span {
+  color: var(--steel-soft);
+  font-size: 0.76rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.shift-editor-preview strong {
+  min-width: 0;
+  color: var(--white);
+  font-size: 1.1rem;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
 .name-editor-modal {
   width: min(370px, calc(100vw - 24px));
   max-width: 100%;

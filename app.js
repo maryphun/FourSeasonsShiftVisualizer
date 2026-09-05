@@ -17,6 +17,9 @@ const SHIFT_PANDA_IMAGES = Object.freeze({
   off: "assets/shift-panda-off.png",
 });
 const VALID_SHIFT_CONTEXTS = new Set(["TR", "CDT", "CON"]);
+const SHIFT_EDITOR_HOURS = Object.freeze(Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0")));
+const SHIFT_EDITOR_MINUTES = Object.freeze(["00", "30"]);
+const SHIFT_CONTEXT_MAX_LENGTH = 24;
 
 createApp({
   data() {
@@ -61,6 +64,12 @@ createApp({
       eventEditorValue: "",
       shiftEditorShift: null,
       shiftEditorValue: "",
+      shiftEditorMode: "work",
+      shiftEditorIsAl: false,
+      shiftEditorHour: "09",
+      shiftEditorMinute: "00",
+      shiftEditorContext: "",
+      shiftWheelScrollTimer: null,
       showSpreadsheet: false,
       pendingReplace: false,
       readError: false,
@@ -171,6 +180,21 @@ createApp({
       return [this.shiftRelativeLabel(this.shiftEditorShift), this.shiftEditorShift.dateLabel]
         .filter(Boolean)
         .join(" - ");
+    },
+    shiftEditorHours() {
+      return SHIFT_EDITOR_HOURS;
+    },
+    shiftEditorMinutes() {
+      return SHIFT_EDITOR_MINUTES;
+    },
+    shiftEditorPreview() {
+      return buildShiftEditorValue({
+        mode: this.shiftEditorMode,
+        isAl: this.shiftEditorIsAl,
+        hour: this.shiftEditorHour,
+        minute: this.shiftEditorMinute,
+        context: this.shiftEditorContext,
+      });
     },
     dayCarouselItems() {
       const shifts = this.selectedProfile?.shifts || [];
@@ -302,6 +326,7 @@ createApp({
     window.clearTimeout(this.profileTransitionTimer);
     window.clearTimeout(this.dayTransitionTimer);
     window.clearTimeout(this.dayFastTravelTimer);
+    window.clearTimeout(this.shiftWheelScrollTimer);
     this.unbindVersionWakeChecks();
   },
   methods: {
@@ -749,22 +774,69 @@ createApp({
       this.closeCoworkerModal();
       this.closeDateEventEditor();
       this.closeNameEditor();
+      const editorState = shiftValueToEditorState(shift.value);
       this.shiftEditorShift = shift;
       this.shiftEditorValue = String(shift.value || "");
+      this.shiftEditorMode = editorState.mode;
+      this.shiftEditorIsAl = editorState.isAl;
+      this.shiftEditorHour = editorState.hour;
+      this.shiftEditorMinute = editorState.minute;
+      this.shiftEditorContext = editorState.context;
       nextTick(() => {
         this.refreshIcons();
-        this.$refs.shiftEditorInput?.focus?.();
-        this.$refs.shiftEditorInput?.select?.();
+        this.syncShiftWheelScroll();
       });
     },
     closeShiftEditor() {
       this.shiftEditorShift = null;
       this.shiftEditorValue = "";
+      this.shiftEditorMode = "work";
+      this.shiftEditorIsAl = false;
+      this.shiftEditorHour = "09";
+      this.shiftEditorMinute = "00";
+      this.shiftEditorContext = "";
+    },
+    setShiftEditorMode(mode) {
+      this.shiftEditorMode = mode === "off" ? "off" : "work";
+      nextTick(() => this.syncShiftWheelScroll());
+    },
+    setShiftEditorAl(value) {
+      this.shiftEditorIsAl = Boolean(value);
+    },
+    setShiftEditorTime(part, value) {
+      const text = String(value || "").padStart(2, "0");
+      if (part === "hour" && SHIFT_EDITOR_HOURS.includes(text)) {
+        this.shiftEditorHour = text;
+      }
+      if (part === "minute" && SHIFT_EDITOR_MINUTES.includes(text)) {
+        this.shiftEditorMinute = text;
+      }
+      nextTick(() => this.syncShiftWheelScroll());
+    },
+    syncShiftWheelScroll() {
+      document
+        .querySelectorAll(".shift-time-wheel .active")
+        .forEach((button) => button.scrollIntoView({ block: "center", inline: "nearest" }));
+    },
+    handleShiftWheelScroll(part, event) {
+      const container = event.currentTarget;
+      window.clearTimeout(this.shiftWheelScrollTimer);
+      this.shiftWheelScrollTimer = window.setTimeout(() => {
+        const center = container.getBoundingClientRect().top + container.clientHeight / 2;
+        const buttons = [...container.querySelectorAll("[data-value]")];
+        const closest = buttons.reduce((best, button) => {
+          const rect = button.getBoundingClientRect();
+          const distance = Math.abs(rect.top + rect.height / 2 - center);
+          return !best || distance < best.distance ? { button, distance } : best;
+        }, null);
+        const value = closest?.button?.dataset.value;
+        if (value) this.setShiftEditorTime(part, value);
+      }, 80);
     },
     saveShiftEdit() {
       if (!this.shiftEditorShift || !this.selectedProfile) return;
 
-      const value = normalizeManualShiftValue(this.shiftEditorValue);
+      const value = this.shiftEditorPreview;
       if (!this.updateActiveShiftValue(this.shiftEditorShift, value)) {
         this.statusText = "Could not find this shift in the CSV";
         return;
@@ -774,8 +846,9 @@ createApp({
       this.closeShiftEditor();
     },
     clearShiftEditorValue() {
-      this.shiftEditorValue = "";
-      nextTick(() => this.$refs.shiftEditorInput?.focus?.());
+      this.shiftEditorMode = "off";
+      this.shiftEditorIsAl = false;
+      this.shiftEditorContext = "";
     },
     updateActiveShiftValue(targetShift, value) {
       const profile = this.selectedProfile;
@@ -2442,6 +2515,54 @@ function normalizeManualShiftValue(value) {
   if (!text) return "";
 
   return canonicalShiftValue(text) || normalizeCell(text);
+}
+
+function shiftValueToEditorState(value) {
+  const shift = String(value || "").trim();
+  const upper = shift.toUpperCase();
+  const display = parseShiftDisplay(shift);
+  const startHour = shiftStartHour(shift);
+  const hour = Number.isFinite(startHour) ? Math.floor(startHour) : 9;
+  const minute = Number.isFinite(startHour) && startHour % 1 >= 0.5 ? "30" : "00";
+
+  return {
+    mode: isNonWorkingShift(shift) ? "off" : "work",
+    isAl: upper === "AL" || upper === "SAL",
+    hour: String(hour).padStart(2, "0"),
+    minute,
+    context: unwrapShiftContext(display.context),
+  };
+}
+
+function buildShiftEditorValue(state) {
+  if (state?.mode === "off") return state.isAl ? "AL" : "OFF";
+
+  const hour = SHIFT_EDITOR_HOURS.includes(String(state?.hour)) ? String(state.hour) : "09";
+  const minute = SHIFT_EDITOR_MINUTES.includes(String(state?.minute)) ? String(state.minute) : "00";
+  const context = normalizeShiftEditorContext(state?.context);
+  return `${hour}:${minute}${context ? ` ${context}` : ""}`;
+}
+
+function unwrapShiftContext(value) {
+  return String(value || "")
+    .replace(/^\(\s*/, "")
+    .replace(/\s*\)$/, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, SHIFT_CONTEXT_MAX_LENGTH);
+}
+
+function normalizeShiftEditorContext(value) {
+  const text = String(value || "")
+    .normalize("NFKC")
+    .replace(/[|_[\]{}"'`]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, SHIFT_CONTEXT_MAX_LENGTH);
+
+  if (!text) return "";
+  const unwrapped = unwrapShiftContext(text);
+  return unwrapped ? `(${unwrapped})` : "";
 }
 
 function canonicalShiftValue(value) {
