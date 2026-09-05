@@ -16,6 +16,7 @@ const SHIFT_PANDA_IMAGES = Object.freeze({
   late: "assets/shift-panda-late.png",
   off: "assets/shift-panda-off.png",
 });
+const VALID_SHIFT_CONTEXTS = new Set(["TR", "CDT", "CON"]);
 
 createApp({
   data() {
@@ -2280,11 +2281,11 @@ function normalizeCell(value) {
     .replace(/\b225\b/g, "22.5")
     .replace(/\b22[ S]5\b/g, "22.5")
     .replace(/\b(\d{1,2})\s*\(?TR\)?\b/g, "$1 (TR)")
+    .replace(/\b(\d{1,2})\s*\(?CDT\)?\b/g, "$1 (CDT)")
     .replace(/\b(\d{1,2})\s*CON\b/g, "$1 CON");
 
-  if (/^(OFF|ROFF|SAL|AL|\d{1,2}|\d{1,2}\.\d|\d{1,2}-\d{1,2}|\d{1,2} \(TR\)|\d{1,2} CON|\/)$/.test(corrected)) {
-    return corrected;
-  }
+  const shiftValue = canonicalShiftValue(corrected);
+  if (shiftValue) return shiftValue;
 
   if (/^\d{1,2}-[A-Z]{3}$/.test(corrected)) {
     return corrected.replace(/-([A-Z]{3})$/, (_, month) => {
@@ -2336,6 +2337,7 @@ function canonicalShiftValue(value) {
   const text = String(value || "")
     .normalize("NFKC")
     .toUpperCase()
+    .replace(/[|_[\]{}"'`]/g, " ")
     .replace(/\s+/g, " ")
     .replace(/\s*\(\s*/g, " (")
     .replace(/\s*\)\s*/g, ")")
@@ -2348,19 +2350,38 @@ function canonicalShiftValue(value) {
 
   if (/^(OFF|ROFF|SAL|AL|\/)$/.test(text)) return text;
 
-  const rangeMatch = text.match(/^(\d{1,2})(?::([0-5]\d)|\.([05]))?\s*-\s*(\d{1,2})(?::([0-5]\d)|\.([05]))?$/);
-  if (rangeMatch && validHour(rangeMatch[1]) && validHour(rangeMatch[4])) {
-    return text;
+  const rangeMatch = text.match(/^(\d{1,2}(?::[0-5]\d|\.[05])?)\s*-\s*(\d{1,2}(?::[0-5]\d|\.[05])?)(.*)$/);
+  if (rangeMatch && validHour(rangeMatch[1]) && validHour(rangeMatch[2])) {
+    const context = canonicalShiftContext(rangeMatch[3]);
+    if (rangeMatch[3] && !context) return "";
+    return `${rangeMatch[1]}-${rangeMatch[2]}${context ? ` ${context}` : ""}`;
   }
 
-  const timeMatch = text.match(/^(\d{1,2})(?::([0-5]\d)|\.([05]))?(?:\s*(\([A-Z0-9 ]{1,10}\)|[A-Z]{1,10}))?$/);
+  const timeMatch = text.match(/^(\d{1,2}(?::[0-5]\d|\.[05])?)(.*)$/);
   if (!timeMatch || !validHour(timeMatch[1])) return "";
 
-  return text;
+  const context = canonicalShiftContext(timeMatch[2]);
+  if (timeMatch[2] && !context) return "";
+
+  return `${timeMatch[1]}${context ? ` ${context}` : ""}`;
+}
+
+function canonicalShiftContext(value) {
+  const raw = String(value || "").normalize("NFKC").trim();
+  if (!raw) return "";
+
+  let token = raw
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .replace(/^T[R]?$/g, "TR")
+    .replace(/^CD[T]?$/g, "CDT");
+
+  if (!VALID_SHIFT_CONTEXTS.has(token)) return "";
+  return token === "CON" ? "CON" : `(${token})`;
 }
 
 function validHour(value) {
-  const hour = Number(value);
+  const hour = Number(String(value).match(/^\d{1,2}/)?.[0]);
   return Number.isInteger(hour) && hour >= 0 && hour <= 24;
 }
 
