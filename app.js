@@ -27,6 +27,7 @@ createApp({
       progress: 0,
       statusText: "Upload Photo",
       table: [],
+      cellReviewHints: {},
       rosterDb: null,
       selectedProfileId: "",
       profilePickerIndex: 0,
@@ -250,6 +251,9 @@ createApp({
     normalizedTable() {
       return this.table;
     },
+    reviewHintCount() {
+      return Object.keys(this.cellReviewHints).length;
+    },
     hasGoogleAuth() {
       return this.serverAuth !== "not configured" || Boolean(this.googleApiKey.trim());
     },
@@ -441,7 +445,11 @@ createApp({
         const grid = detectTableGrid(imageCanvas);
         this.progress = 18;
 
-        const imageBase64 = await fileToBase64(this.selectedFile);
+        this.statusText = "Cleaning image for OCR...";
+        const ocrImage = preprocessImageForOcr(imageCanvas);
+        const ocrGrid = scaleGrid(grid, ocrImage.scale);
+        const imageBase64 = ocrImage.base64;
+        this.progress = 32;
         if (activeRun !== this.runId) return;
 
         this.statusText = "Calling Google Vision...";
@@ -453,7 +461,7 @@ createApp({
           body: JSON.stringify({
             imageBase64,
             fileName: this.selectedFile.name,
-            mimeType: this.selectedFile.type,
+            mimeType: ocrImage.mimeType,
             googleApiKey: this.googleApiKey.trim() || undefined,
           }),
         });
@@ -468,15 +476,21 @@ createApp({
         this.progress = 82;
         this.statusText = "Building roster...";
 
-        const mappedTable = grid.isUsable ? wordsToTable(result.words || [], grid) : [];
+        const mappedTable = grid.isUsable ? wordsToTable(result.words || [], ocrGrid) : [];
         const fallbackTable = textToTable(result.text || "");
-        const bestTable =
-          countFilledCells(mappedTable) >= Math.max(8, countFilledCells(fallbackTable) * 0.35)
-            ? mappedTable
-            : fallbackTable;
+        const useMappedTable =
+          countFilledCells(mappedTable) >= Math.max(8, countFilledCells(fallbackTable) * 0.35);
+        const bestTable = useMappedTable ? mappedTable : fallbackTable;
+        const trimmedTable = trimEmptyEdgesWithMap(bestTable);
+        const reviewedOcr = prepareOcrTableForSchedule(padRows(trimmedTable.table), {
+          imageCanvas,
+          grid: useMappedTable && grid.isUsable ? grid : null,
+          rowMap: trimmedTable.rowMap,
+        });
 
-        this.table = padRows(trimEmptyEdges(bestTable));
-        const rosterDb = createRosterDatabase(this.table, this.selectedFile.name);
+        this.table = reviewedOcr.table;
+        this.cellReviewHints = reviewedOcr.reviewHints;
+        const rosterDb = createRosterDatabase(this.table, this.selectedFile.name, this.cellReviewHints);
 
         if (!rosterDb.profiles.length) {
           this.showSpreadsheet = true;
@@ -487,7 +501,9 @@ createApp({
 
         this.setRosterDb(rosterDb);
         this.progress = 100;
-        this.statusText = `Roster saved with ${rosterDb.profiles.length} profiles`;
+        this.statusText = this.reviewHintCount
+          ? `Roster saved with ${rosterDb.profiles.length} profiles; ${this.reviewHintCount} cells need review`
+          : `Roster saved with ${rosterDb.profiles.length} profiles`;
       } catch (error) {
         console.error(error);
         this.statusText = error.message || "Could not read this photo";
@@ -512,7 +528,8 @@ createApp({
       if (!this.hasTable) return;
 
       const sourceName = this.selectedFile?.name || this.rosterDb?.sourceFileName || "spreadsheet";
-      const rosterDb = createRosterDatabase(this.table, sourceName);
+      this.cellReviewHints = pruneReviewHintsForTable(this.cellReviewHints, this.table);
+      const rosterDb = createRosterDatabase(this.table, sourceName, this.cellReviewHints);
       if (!rosterDb.profiles.length) {
         this.statusText = "No worker profiles were found in column A";
         return;
@@ -525,6 +542,7 @@ createApp({
     setRosterDb(rosterDb) {
       this.rosterDb = rosterDb;
       this.table = padRows(rosterDb.rawTable || this.table);
+      this.cellReviewHints = normalizeReviewHints(rosterDb.reviewHints);
       this.readError = false;
       writeCache(ROSTER_CACHE_KEY, rosterDb);
 
@@ -546,6 +564,7 @@ createApp({
 
       this.rosterDb = rosterDb;
       this.table = padRows(rosterDb.rawTable || []);
+      this.cellReviewHints = normalizeReviewHints(rosterDb.reviewHints);
 
       const cachedProfileId = readTextCache(PROFILE_CACHE_KEY);
       this.selectedProfileId = this.profileExists(cachedProfileId) ? cachedProfileId : "";
@@ -649,6 +668,7 @@ createApp({
       this.selectedFile = null;
       this.previewUrl = "";
       this.table = [];
+      this.cellReviewHints = {};
       this.progress = 0;
       this.isProcessing = false;
       this.readError = false;
@@ -664,6 +684,7 @@ createApp({
       removeCache(ROSTER_CACHE_KEY);
       removeCache(PROFILE_CACHE_KEY);
       this.rosterDb = null;
+      this.cellReviewHints = {};
       this.selectedProfileId = "";
       this.profilePickerIndex = 0;
       this.selectedShiftIndex = 0;
@@ -1092,6 +1113,17 @@ createApp({
       this.showSpreadsheet = false;
       nextTick(() => this.refreshIcons());
     },
+    cellReviewHint(rowIndex, cellIndex) {
+      return this.cellReviewHints[cellReviewKey(rowIndex, cellIndex)] || "";
+    },
+    clearCellReviewHint(rowIndex, cellIndex) {
+      const key = cellReviewKey(rowIndex, cellIndex);
+      if (!this.cellReviewHints[key]) return;
+
+      const nextHints = { ...this.cellReviewHints };
+      delete nextHints[key];
+      this.cellReviewHints = nextHints;
+    },
     downloadCsv() {
       if (!this.hasTable) return;
       const blob = new Blob([this.toCsv()], { type: "text/csv;charset=utf-8" });
@@ -1162,7 +1194,7 @@ function readCurrentAppVersion() {
   return 0;
 }
 
-function createRosterDatabase(table, sourceFileName = "") {
+function createRosterDatabase(table, sourceFileName = "", reviewHints = {}) {
   const rawTable = padRows(trimEmptyEdges(table)).map((row) => row.map((cell) => String(cell || "").trim()));
   const dateColumns = inferDateColumns(rawTable);
   const usedIds = new Set();
@@ -1203,6 +1235,54 @@ function createRosterDatabase(table, sourceFileName = "") {
     dateColumns,
     profiles,
     rawTable,
+    reviewHints: normalizeReviewHints(reviewHints),
+  };
+}
+
+function prepareOcrTableForSchedule(table, options = {}) {
+  const cleanedTable = padRows(table).map((row) => row.map((cell) => String(cell || "").trim()));
+  const reviewHints = {};
+  const dateColumns = inferDateColumns(cleanedTable);
+  if (!dateColumns.length) return { table: cleanedTable, reviewHints };
+
+  cleanedTable.forEach((row, rowIndex) => {
+    const name = cleanProfileName(row[0]);
+    if (!isProfileName(name)) return;
+
+    const shiftValues = dateColumns.map((dateColumn) => String(row[dateColumn.columnIndex] || "").trim());
+    const filledShiftCount = shiftValues.filter(Boolean).length;
+    const rowFillRatio = filledShiftCount / Math.max(1, dateColumns.length);
+
+    dateColumns.forEach((dateColumn, dateIndex) => {
+      const columnIndex = dateColumn.columnIndex;
+      const originalText = String(row[columnIndex] || "").trim();
+      const normalized = normalizeOcrShiftCell(originalText);
+
+      if (originalText) {
+        if (normalized.value) {
+          row[columnIndex] = normalized.value;
+          return;
+        }
+
+        row[columnIndex] = "";
+        reviewHints[cellReviewKey(rowIndex, columnIndex)] = `Ignored OCR text: ${originalText}`;
+        return;
+      }
+
+      const hasNearbyShifts = Boolean(shiftValues[dateIndex - 1] || shiftValues[dateIndex + 1]);
+      const shouldCheckBlank =
+        (rowFillRatio >= 0.65 || hasNearbyShifts) &&
+        cellLooksLikeMissedText(options.imageCanvas, options.grid, options.rowMap?.[rowIndex] ?? rowIndex, columnIndex);
+
+      if (shouldCheckBlank) {
+        reviewHints[cellReviewKey(rowIndex, columnIndex)] = "Possible missed shift text";
+      }
+    });
+  });
+
+  return {
+    table: cleanedTable,
+    reviewHints,
   };
 }
 
@@ -1700,6 +1780,86 @@ function makeImageCanvas(image) {
   return canvas;
 }
 
+function preprocessImageForOcr(sourceCanvas) {
+  const scale = chooseOcrScale(sourceCanvas.width, sourceCanvas.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(sourceCanvas.width * scale));
+  canvas.height = Math.max(1, Math.round(sourceCanvas.height * scale));
+
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+
+  for (let offset = 0; offset < data.length; offset += 4) {
+    const red = data[offset];
+    const green = data[offset + 1];
+    const blue = data[offset + 2];
+    const lightness = red * 0.299 + green * 0.587 + blue * 0.114;
+    const chroma = Math.max(red, green, blue) - Math.min(red, green, blue);
+    let gray = lightness;
+
+    if (chroma > 28 && lightness > 118) {
+      gray = Math.min(255, gray + 54);
+    }
+
+    gray = (gray - 128) * 1.55 + 128;
+    if (gray > 218) gray = 255;
+    if (gray < 158) gray = Math.max(0, gray - 36);
+
+    const value = clampColor(gray);
+    data[offset] = value;
+    data[offset + 1] = value;
+    data[offset + 2] = value;
+    data[offset + 3] = 255;
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+
+  const pngBase64 = canvasToBase64(canvas, "image/png");
+  if (pngBase64.length <= 11_500_000) {
+    return { base64: pngBase64, mimeType: "image/png", scale };
+  }
+
+  return {
+    base64: canvasToBase64(canvas, "image/jpeg", 0.9),
+    mimeType: "image/jpeg",
+    scale,
+  };
+}
+
+function chooseOcrScale(width, height) {
+  const longEdge = Math.max(width, height);
+  if (longEdge <= 0) return 1;
+  const fitScale = Math.min(2.6, 3200 / longEdge);
+  if (longEdge < 1800) return Math.max(1.5, fitScale);
+  if (longEdge < 3200) return Math.max(1, fitScale);
+  return fitScale;
+}
+
+function canvasToBase64(canvas, mimeType, quality) {
+  const value = canvas.toDataURL(mimeType, quality);
+  return value.includes(",") ? value.split(",").pop() : value;
+}
+
+function scaleGrid(grid, scale) {
+  if (!grid?.isUsable || scale === 1) return grid;
+  return {
+    ...grid,
+    verticals: grid.verticals.map((line) => line * scale),
+    horizontals: grid.horizontals.map((line) => line * scale),
+  };
+}
+
+function clampColor(value) {
+  return Math.max(0, Math.min(255, Math.round(value)));
+}
+
 function detectTableGrid(canvas) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const { width, height } = canvas;
@@ -1898,7 +2058,7 @@ function hasGoodConfidence(value) {
   if (value === "" || value === null || value === undefined) return true;
   const confidence = Number(value);
   if (!Number.isFinite(confidence)) return true;
-  return confidence <= 1 ? confidence >= 0.2 : confidence >= 20;
+  return confidence <= 1 ? confidence >= 0.08 : confidence >= 8;
 }
 
 function findCellIndex(lines, point) {
@@ -1907,6 +2067,55 @@ function findCellIndex(lines, point) {
   }
 
   return -1;
+}
+
+function cellLooksLikeMissedText(canvas, grid, rowIndex, columnIndex) {
+  if (!canvas || !grid?.isUsable) return false;
+
+  const bounds = gridCellBounds(grid, rowIndex, columnIndex);
+  if (!bounds) return false;
+
+  const width = bounds.x1 - bounds.x0;
+  const height = bounds.y1 - bounds.y0;
+  if (width < 6 || height < 6) return false;
+
+  const marginX = Math.max(2, Math.floor(width * 0.18));
+  const marginY = Math.max(2, Math.floor(height * 0.2));
+  const sampleX = bounds.x0 + marginX;
+  const sampleY = bounds.y0 + marginY;
+  const sampleWidth = Math.max(1, width - marginX * 2);
+  const sampleHeight = Math.max(1, height - marginY * 2);
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const imageData = ctx.getImageData(sampleX, sampleY, sampleWidth, sampleHeight).data;
+  let inkPixels = 0;
+  let strongInkPixels = 0;
+  const totalPixels = sampleWidth * sampleHeight;
+
+  for (let offset = 0; offset < imageData.length; offset += 4) {
+    const red = imageData[offset];
+    const green = imageData[offset + 1];
+    const blue = imageData[offset + 2];
+    const lightness = red * 0.299 + green * 0.587 + blue * 0.114;
+    const chroma = Math.max(red, green, blue) - Math.min(red, green, blue);
+    const isInk = lightness < 142 || (chroma > 42 && lightness < 178);
+
+    if (isInk) inkPixels += 1;
+    if (lightness < 108) strongInkPixels += 1;
+  }
+
+  const inkRatio = inkPixels / Math.max(1, totalPixels);
+  const strongInkRatio = strongInkPixels / Math.max(1, totalPixels);
+  return inkRatio >= 0.018 || strongInkRatio >= 0.008;
+}
+
+function gridCellBounds(grid, rowIndex, columnIndex) {
+  const x0 = Math.ceil(grid.verticals[columnIndex]);
+  const x1 = Math.floor(grid.verticals[columnIndex + 1]);
+  const y0 = Math.ceil(grid.horizontals[rowIndex]);
+  const y1 = Math.floor(grid.horizontals[rowIndex + 1]);
+
+  if (![x0, x1, y0, y1].every(Number.isFinite) || x1 <= x0 || y1 <= y0) return null;
+  return { x0, x1, y0, y1 };
 }
 
 function textToTable(text) {
@@ -1923,8 +2132,16 @@ function textToTable(text) {
 }
 
 function trimEmptyEdges(table) {
+  return trimEmptyEdgesWithMap(table).table;
+}
+
+function trimEmptyEdgesWithMap(table) {
   const rows = table.filter((row) => row.some((cell) => String(cell).trim()));
-  if (!rows.length) return [];
+  const rowMap = table
+    .map((row, rowIndex) => ({ row, rowIndex }))
+    .filter((entry) => entry.row.some((cell) => String(cell).trim()))
+    .map((entry) => entry.rowIndex);
+  if (!rows.length) return { table: [], rowMap: [] };
 
   const lastColumn = rows.reduce((max, row) => {
     for (let index = row.length - 1; index >= 0; index -= 1) {
@@ -1933,7 +2150,10 @@ function trimEmptyEdges(table) {
     return max;
   }, 0);
 
-  return rows.map((row) => row.slice(0, lastColumn + 1));
+  return {
+    table: rows.map((row) => row.slice(0, lastColumn + 1)),
+    rowMap,
+  };
 }
 
 function padRows(table) {
@@ -1995,6 +2215,100 @@ function normalizeCell(value) {
   }
 
   return text;
+}
+
+function normalizeOcrShiftCell(value) {
+  const text = String(value || "")
+    .normalize("NFKC")
+    .replace(/[|_[\]{}"'`]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return { value: "" };
+
+  const direct = canonicalShiftValue(text);
+  if (direct) return { value: direct };
+
+  const compact = text
+    .toUpperCase()
+    .replace(/\b0FF\b/g, "OFF")
+    .replace(/\bOFE\b/g, "OFF")
+    .replace(/\bOF F\b/g, "OFF")
+    .replace(/\bR0FF\b/g, "ROFF")
+    .replace(/\bROF F\b/g, "ROFF")
+    .replace(/\b5AL\b/g, "SAL")
+    .replace(/\bSA1\b/g, "SAL")
+    .replace(/\bA1\b/g, "AL")
+    .replace(/\bB\b/g, "8")
+    .replace(/\bI\b/g, "1")
+    .replace(/\bO\b/g, "0")
+    .replace(/\s*\(\s*/g, " (")
+    .replace(/\s*\)\s*/g, ")")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const corrected = canonicalShiftValue(compact);
+  if (corrected) return { value: corrected };
+
+  const tokenMatch = compact.match(/\b(?:OFF|ROFF|SAL|AL|\/|\d{1,2}(?::[0-5]\d|\.[05])?(?:\s*(?:\([A-Z0-9 ]{1,10}\)|[A-Z]{1,10}))?)\b/);
+  const token = tokenMatch ? canonicalShiftValue(tokenMatch[0]) : "";
+  return { value: token };
+}
+
+function canonicalShiftValue(value) {
+  const text = String(value || "")
+    .normalize("NFKC")
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .replace(/\s*\(\s*/g, " (")
+    .replace(/\s*\)\s*/g, ")")
+    .replace(/\b225\b/g, "22.5")
+    .replace(/\b22[ S]5\b/g, "22.5")
+    .replace(/\b(\d{1,2})\s*\(?TR\)?\b/g, "$1 (TR)")
+    .replace(/\b(\d{1,2})\s*\(?CDT\)?\b/g, "$1 (CDT)")
+    .replace(/\b(\d{1,2})\s*CON\b/g, "$1 CON")
+    .trim();
+
+  if (/^(OFF|ROFF|SAL|AL|\/)$/.test(text)) return text;
+
+  const rangeMatch = text.match(/^(\d{1,2})(?::([0-5]\d)|\.([05]))?\s*-\s*(\d{1,2})(?::([0-5]\d)|\.([05]))?$/);
+  if (rangeMatch && validHour(rangeMatch[1]) && validHour(rangeMatch[4])) {
+    return text;
+  }
+
+  const timeMatch = text.match(/^(\d{1,2})(?::([0-5]\d)|\.([05]))?(?:\s*(\([A-Z0-9 ]{1,10}\)|[A-Z]{1,10}))?$/);
+  if (!timeMatch || !validHour(timeMatch[1])) return "";
+
+  return text;
+}
+
+function validHour(value) {
+  const hour = Number(value);
+  return Number.isInteger(hour) && hour >= 0 && hour <= 24;
+}
+
+function cellReviewKey(rowIndex, cellIndex) {
+  return `${rowIndex}:${cellIndex}`;
+}
+
+function normalizeReviewHints(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key, hint]) => /^\d+:\d+$/.test(key) && String(hint || "").trim())
+      .map(([key, hint]) => [key, String(hint).replace(/\s+/g, " ").trim().slice(0, 120)]),
+  );
+}
+
+function pruneReviewHintsForTable(reviewHints, table) {
+  const hints = normalizeReviewHints(reviewHints);
+
+  return Object.fromEntries(
+    Object.entries(hints).filter(([key]) => {
+      const [rowIndex, cellIndex] = key.split(":").map(Number);
+      return Boolean(table[rowIndex]) && cellIndex >= 0 && cellIndex < table[rowIndex].length;
+    }),
+  );
 }
 
 function monthShortName(monthNumber) {

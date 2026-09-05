@@ -100,7 +100,10 @@
           <section class="sheet-card editor-sheet">
             <div class="sheet-topline">
               <strong>{{ rosterMonthLabel || "Roster Data" }}</strong>
-              <span v-if="hasTable">{{ table.length }} rows, {{ columnCount }} columns</span>
+              <div class="sheet-meta">
+                <span v-if="reviewHintCount" class="review-count">{{ reviewHintCount }} cells need review</span>
+                <span v-if="hasTable">{{ table.length }} rows, {{ columnCount }} columns</span>
+              </div>
             </div>
 
             <div v-if="!hasTable" class="empty-result">
@@ -120,10 +123,17 @@
                 <tbody>
                   <tr v-for="(row, rowIndex) in normalizedTable" :key="`r-${rowIndex}`">
                     <th class="row-head">{{ rowIndex + 1 }}</th>
-                    <td v-for="(_, cellIndex) in columnCount" :key="`c-${rowIndex}-${cellIndex}`">
+                    <td
+                      v-for="(_, cellIndex) in columnCount"
+                      :key="`c-${rowIndex}-${cellIndex}`"
+                      :class="{ 'needs-review': cellReviewHint(rowIndex, cellIndex) }"
+                      :title="cellReviewHint(rowIndex, cellIndex)"
+                    >
                       <input
                         v-model="table[rowIndex][cellIndex]"
                         :aria-label="`Row ${rowIndex + 1}, column ${columnLabel(cellIndex)}`"
+                        :placeholder="cellReviewHint(rowIndex, cellIndex) ? 'Review' : ''"
+                        @input="clearCellReviewHint(rowIndex, cellIndex)"
                       />
                     </td>
                   </tr>
