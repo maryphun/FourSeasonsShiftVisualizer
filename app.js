@@ -738,6 +738,12 @@ createApp({
     displayShift(value) {
       return formatShiftForDisplay(value);
     },
+    displayShiftMain(value) {
+      return parseShiftDisplay(value).main;
+    },
+    displayShiftContext(value) {
+      return parseShiftDisplay(value).context;
+    },
     otherWorkingProfiles(shift) {
       if (!shift || !this.profiles.length) return [];
 
@@ -1430,29 +1436,65 @@ function shiftSortValue(value) {
 }
 
 function formatShiftForDisplay(value) {
-  const shift = String(value || "").trim();
-  if (!shift) return "-";
-  if (isNonWorkingShift(shift)) return shift.toUpperCase();
+  const display = parseShiftDisplay(value);
+  return display.context ? `${display.main} ${display.context}` : display.main;
+}
 
-  const rangeMatch = shift.match(/^(\d{1,2}(?:\.\d+)?)\s*-\s*(\d{1,2}(?:\.\d+)?)(.*)$/);
+function parseShiftDisplay(value) {
+  const shift = String(value || "").trim();
+  if (!shift) return { main: "-", context: "" };
+  if (isNonWorkingShift(shift)) return { main: shift.toUpperCase(), context: "" };
+
+  const rangeMatch = shift.match(/^(\d{1,2}(?::\d{1,2}|\.\d+)?)\s*-\s*(\d{1,2}(?::\d{1,2}|\.\d+)?)(.*)$/);
   if (rangeMatch) {
     const start = formatClockToken(rangeMatch[1]);
     const end = formatClockToken(rangeMatch[2]);
-    const suffix = rangeMatch[3].trim();
-    return `${start} - ${end}${suffix ? ` ${suffix}` : ""}`;
+    return {
+      main: `${start} - ${end}`,
+      context: normalizeShiftContext(rangeMatch[3]),
+    };
   }
 
-  const timeMatch = shift.match(/^(\d{1,2}(?:\.\d+)?)(.*)$/);
-  if (!timeMatch) return shift;
+  const timeMatch = shift.match(/^(\d{1,2}(?::\d{1,2}|\.\d+)?)(.*)$/);
+  if (!timeMatch) return { main: shift, context: "" };
 
   const clock = formatClockToken(timeMatch[1]);
-  const suffix = timeMatch[2].trim();
-  return `${clock}${suffix ? ` ${suffix}` : ""}`;
+  return {
+    main: clock,
+    context: normalizeShiftContext(timeMatch[2]),
+  };
+}
+
+function normalizeShiftContext(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .replace(/\(\s+/g, "( ")
+    .replace(/\s+\)/g, " )")
+    .trim();
 }
 
 function formatClockToken(value) {
+  const token = String(value || "").trim();
+  if (token.includes(":")) {
+    const [hourPart, minutePart] = token.split(":");
+    const hours = Number(hourPart);
+    const minutes = Number(minutePart);
+    if (
+      !Number.isFinite(hours) ||
+      !Number.isFinite(minutes) ||
+      hours < 0 ||
+      hours > 24 ||
+      minutes < 0 ||
+      minutes >= 60
+    ) {
+      return token;
+    }
+
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  }
+
   const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return String(value);
+  if (!Number.isFinite(numeric)) return token;
 
   let hours = Math.floor(numeric);
   let minutes = Math.round((numeric - hours) * 60);

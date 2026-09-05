@@ -313,7 +313,15 @@
                         <strong>{{ item.shift.day }}</strong>
                         <span>{{ japaneseWeekdayLabel(item.shift.weekday) }}</span>
                       </time>
-                      <strong>{{ displayShift(item.shift.value) }}</strong>
+                      <div
+                        class="day-shift-display"
+                        :class="{ 'has-context': displayShiftContext(item.shift.value) }"
+                      >
+                        <strong>{{ displayShiftMain(item.shift.value) }}</strong>
+                        <small v-if="displayShiftContext(item.shift.value)">
+                          {{ displayShiftContext(item.shift.value) }}
+                        </small>
+                      </div>
                     </div>
 
                     <div class="day-card-action">
@@ -432,16 +440,6 @@
             <button class="tool-button" type="button" @click="replacePhoto">
               <i data-lucide="image-plus"></i>
               <span>Upload New Shift Photo</span>
-            </button>
-            <button
-              v-if="selectedFile"
-              class="tool-button"
-              type="button"
-              :disabled="isProcessing"
-              @click="readPhoto"
-            >
-              <i data-lucide="scan-text"></i>
-              <span>Read Again</span>
             </button>
             <button
               v-if="hasTable"

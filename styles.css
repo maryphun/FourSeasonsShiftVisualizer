@@ -1060,21 +1060,49 @@ img {
   text-align: center;
 }
 
-.day-card-main > strong {
+.day-shift-display {
   min-width: 0;
   flex: 1 1 auto;
   display: grid;
+  gap: 5px;
   place-items: center;
+  align-content: center;
+  text-align: center;
+}
+
+.day-shift-display > strong {
+  min-width: 0;
+  display: block;
   color: var(--white);
   font-size: clamp(2.1rem, 10vw, 3.35rem);
   line-height: 0.92;
-  text-align: center;
   overflow-wrap: anywhere;
 }
 
-.day-shift-card.is-off .day-card-main > strong {
+.day-shift-display.has-context > strong {
+  font-size: clamp(2rem, 9vw, 3.05rem);
+}
+
+.day-shift-display small {
+  max-width: 100%;
+  min-width: 0;
+  color: var(--steel-soft);
+  font-size: clamp(0.82rem, 3.6vw, 1.02rem);
+  font-weight: 850;
+  line-height: 1.05;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.day-shift-card.is-off .day-shift-display > strong {
   color: #fff6d8;
   font-size: clamp(2rem, 9vw, 3.1rem);
+}
+
+.day-shift-card.is-off .day-shift-display small {
+  color: rgba(255, 246, 216, 0.78);
 }
 
 .day-shift-card.is-today {
@@ -2175,8 +2203,16 @@ img {
     flex-basis: 68px;
   }
 
-  .day-card-main > strong {
+  .day-shift-display > strong {
     font-size: clamp(1.85rem, 10vw, 2.8rem);
+  }
+
+  .day-shift-display.has-context > strong {
+    font-size: clamp(1.72rem, 9vw, 2.42rem);
+  }
+
+  .day-shift-display small {
+    font-size: 0.78rem;
   }
 
   .day-card-action {
