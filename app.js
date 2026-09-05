@@ -3,6 +3,7 @@ const { createApp, nextTick } = Vue;
 const ROSTER_CACHE_KEY = "schedulePhotoReader.roster.v1";
 const PROFILE_CACHE_KEY = "schedulePhotoReader.profile.v1";
 const NAME_CACHE_KEY = "schedulePhotoReader.nameAliases.v1";
+const EVENT_CACHE_KEY = "schedulePhotoReader.dateEvents.v1";
 const DAY_TRANSITION_MS = 260;
 const DAY_FAST_TRANSITION_MS = 36;
 const DAY_FAST_FRAME_GAP_MS = 6;
@@ -49,6 +50,9 @@ createApp({
       nameAliases: {},
       nameEditorProfile: null,
       nameEditorValue: "",
+      dateEvents: {},
+      eventEditorShift: null,
+      eventEditorValue: "",
       showSpreadsheet: false,
       pendingReplace: false,
       readError: false,
@@ -142,6 +146,12 @@ createApp({
     coworkerModalTitle() {
       if (!this.coworkerModalShift) return "";
       return [this.shiftRelativeLabel(this.coworkerModalShift), this.coworkerModalShift.dateLabel]
+        .filter(Boolean)
+        .join(" - ");
+    },
+    eventEditorTitle() {
+      if (!this.eventEditorShift) return "";
+      return [this.shiftRelativeLabel(this.eventEditorShift), this.eventEditorShift.dateLabel]
         .filter(Boolean)
         .join(" - ");
     },
@@ -257,6 +267,7 @@ createApp({
   },
   mounted() {
     this.restoreNameAliases();
+    this.restoreDateEvents();
     this.restoreCachedRoster();
     this.checkHealth();
     this.refreshIcons();
@@ -280,6 +291,7 @@ createApp({
       this.showSpreadsheet = false;
       this.closeCoworkerModal();
       this.closeNameEditor();
+      this.closeDateEventEditor();
       nextTick(() => this.refreshIcons());
     },
     returnToSchedule() {
@@ -548,6 +560,7 @@ createApp({
     },
     changeProfile() {
       this.closeCoworkerModal();
+      this.closeDateEventEditor();
       this.selectedProfileId = "";
       this.selectedShiftIndex = 0;
       removeCache(PROFILE_CACHE_KEY);
@@ -564,6 +577,10 @@ createApp({
       this.readError = false;
       this.showSpreadsheet = false;
       this.pendingReplace = false;
+      this.dateEvents = {};
+      this.eventEditorShift = null;
+      this.eventEditorValue = "";
+      removeCache(EVENT_CACHE_KEY);
       this.statusText = "Upload Photo";
     },
     clearCachedRosterOnly() {
@@ -574,6 +591,66 @@ createApp({
       this.profilePickerIndex = 0;
       this.selectedShiftIndex = 0;
       this.coworkerModalShift = null;
+      this.eventEditorShift = null;
+    },
+    restoreDateEvents() {
+      const events = readCache(EVENT_CACHE_KEY);
+      if (!events || typeof events !== "object" || Array.isArray(events)) {
+        this.dateEvents = {};
+        return;
+      }
+
+      this.dateEvents = Object.fromEntries(
+        Object.entries(events)
+          .map(([key, value]) => [key, normalizeEventText(value)])
+          .filter(([key, value]) => key && value)
+      );
+    },
+    shiftEventText(shift) {
+      const key = shiftEventKey(shift);
+      return key ? this.dateEvents[key] || "" : "";
+    },
+    openDateEventEditor(shift = this.activeShift) {
+      if (!shiftEventKey(shift)) return;
+      this.closeCoworkerModal();
+      this.closeNameEditor();
+      this.eventEditorShift = shift;
+      this.eventEditorValue = this.shiftEventText(shift);
+      nextTick(() => {
+        this.refreshIcons();
+        this.$refs.eventEditorInput?.focus?.();
+        this.$refs.eventEditorInput?.select?.();
+      });
+    },
+    closeDateEventEditor() {
+      this.eventEditorShift = null;
+      this.eventEditorValue = "";
+    },
+    saveDateEvent() {
+      const key = shiftEventKey(this.eventEditorShift);
+      if (!key) return;
+
+      const text = normalizeEventText(this.eventEditorValue);
+      const nextEvents = { ...this.dateEvents };
+      if (text) {
+        nextEvents[key] = text;
+      } else {
+        delete nextEvents[key];
+      }
+
+      this.dateEvents = nextEvents;
+      writeCache(EVENT_CACHE_KEY, nextEvents);
+      this.closeDateEventEditor();
+    },
+    removeDateEvent() {
+      const key = shiftEventKey(this.eventEditorShift);
+      if (!key) return;
+
+      const nextEvents = { ...this.dateEvents };
+      delete nextEvents[key];
+      this.dateEvents = nextEvents;
+      writeCache(EVENT_CACHE_KEY, nextEvents);
+      this.closeDateEventEditor();
     },
     restoreNameAliases() {
       const aliases = readCache(NAME_CACHE_KEY);
@@ -1204,6 +1281,18 @@ function japaneseWeekdayLabel(weekday) {
   ]);
   const key = String(weekday || "").trim().slice(0, 3).toLowerCase();
   return labels.get(key) || weekday || "";
+}
+
+function shiftEventKey(shift) {
+  if (!shift) return "";
+  return shift.dateKey || [shift.year, shift.monthNumber, shift.day].filter(Boolean).join("-") || shift.dateLabel || "";
+}
+
+function normalizeEventText(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
 }
 
 function formatDateKey(date) {

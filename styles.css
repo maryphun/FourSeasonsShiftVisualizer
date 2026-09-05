@@ -955,7 +955,7 @@ img {
   width: min(100%, 260px);
   height: 226px;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) 32px;
+  grid-template-rows: auto minmax(0, 1fr) 54px;
   gap: 8px;
   align-content: stretch;
   border: 1px solid rgba(216, 217, 213, 0.22);
@@ -1107,7 +1107,40 @@ img {
 
 .day-card-action {
   min-width: 0;
-  min-height: 32px;
+  min-height: 54px;
+  display: grid;
+  grid-template-rows: 20px 28px;
+  align-content: end;
+  justify-items: center;
+  gap: 2px;
+}
+
+.day-event-note {
+  width: 100%;
+  min-width: 0;
+  min-height: 18px;
+  margin: 0;
+  color: var(--mist);
+  font-size: 0.75rem;
+  font-weight: 850;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.day-event-note.is-empty {
+  visibility: hidden;
+}
+
+.day-shift-card.is-off .day-event-note {
+  color: #fff6d8;
+}
+
+.day-card-coworkers {
+  min-width: 0;
+  min-height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1156,6 +1189,56 @@ img {
 .day-shift-card.is-off .coworker-button:focus-visible {
   background: rgba(255, 240, 188, 0.08);
   color: #fff6d8;
+}
+
+.day-event-tools {
+  display: flex;
+  justify-content: center;
+  padding: 0 16px;
+}
+
+.add-event-button {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(125, 150, 179, 0.34);
+  border-radius: 999px;
+  padding: 0 18px;
+  background:
+    linear-gradient(180deg, rgba(216, 217, 213, 0.08), rgba(216, 217, 213, 0.035)),
+    rgba(10, 23, 36, 0.22);
+  color: var(--mist);
+  font-size: 0.86rem;
+  font-weight: 850;
+  box-shadow:
+    0 8px 14px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.add-event-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.add-event-button:hover,
+.add-event-button:focus-visible {
+  outline: 0;
+  border-color: rgba(125, 150, 179, 0.58);
+  background:
+    linear-gradient(180deg, rgba(216, 217, 213, 0.12), rgba(216, 217, 213, 0.05)),
+    rgba(10, 23, 36, 0.28);
+  color: var(--white);
+}
+
+.add-event-button:active {
+  transform: translateY(1px);
 }
 
 .day-carousel-card {
@@ -1440,6 +1523,10 @@ img {
 }
 
 .name-editor-backdrop {
+  z-index: 60;
+}
+
+.event-editor-backdrop {
   z-index: 60;
 }
 
@@ -2090,6 +2177,21 @@ img {
 
   .day-card-main > strong {
     font-size: clamp(1.85rem, 10vw, 2.8rem);
+  }
+
+  .day-card-action {
+    min-height: 52px;
+    grid-template-rows: 18px 28px;
+  }
+
+  .day-event-note {
+    font-size: 0.7rem;
+  }
+
+  .add-event-button {
+    width: 100%;
+    min-height: 32px;
+    font-size: 0.8rem;
   }
 
   .coworker-button {

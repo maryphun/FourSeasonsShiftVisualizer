@@ -317,21 +317,30 @@
                     </div>
 
                     <div class="day-card-action">
-                      <button
-                        v-if="item.slot === 'active' && otherWorkingCount(item.shift)"
-                        class="coworker-button"
-                        type="button"
-                        @pointerdown.stop
-                        @click.stop="openCoworkerModal(item.shift)"
+                      <p
+                        class="day-event-note"
+                        :class="{ 'is-empty': !shiftEventText(item.shift) }"
+                        :aria-hidden="!shiftEventText(item.shift)"
                       >
-                        {{ otherWorkingCount(item.shift) }} other persons
-                      </button>
-                      <span
-                        v-else-if="otherWorkingCount(item.shift)"
-                        class="coworker-count-label"
-                      >
-                        {{ otherWorkingCount(item.shift) }} other persons
-                      </span>
+                        {{ shiftEventText(item.shift) || "No event" }}
+                      </p>
+                      <div class="day-card-coworkers">
+                        <button
+                          v-if="item.slot === 'active' && otherWorkingCount(item.shift)"
+                          class="coworker-button"
+                          type="button"
+                          @pointerdown.stop
+                          @click.stop="openCoworkerModal(item.shift)"
+                        >
+                          {{ otherWorkingCount(item.shift) }} other persons
+                        </button>
+                        <span
+                          v-else-if="otherWorkingCount(item.shift)"
+                          class="coworker-count-label"
+                        >
+                          {{ otherWorkingCount(item.shift) }} other persons
+                        </span>
+                      </div>
                     </div>
                   </article>
                 </div>
@@ -344,6 +353,13 @@
                   @click="handleDayArrowClick('next')"
                 >
                   <i data-lucide="chevron-right"></i>
+                </button>
+              </div>
+
+              <div class="day-event-tools">
+                <button class="add-event-button" type="button" @click="openDateEventEditor(activeShift)">
+                  <i data-lucide="calendar-plus"></i>
+                  <span>Add Event</span>
                 </button>
               </div>
 
@@ -533,6 +549,59 @@
               <button class="primary-button compact" type="submit">
                 <i data-lucide="save"></i>
                 <span>Save Name</span>
+              </button>
+            </div>
+          </form>
+        </section>
+      </div>
+
+      <div
+        v-if="eventEditorShift"
+        class="modal-backdrop event-editor-backdrop"
+        role="presentation"
+        @click.self="closeDateEventEditor"
+      >
+        <section
+          class="name-editor-modal event-editor-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="event-editor-title"
+        >
+          <div class="coworker-modal-head">
+            <div>
+              <span>{{ eventEditorTitle }}</span>
+              <strong id="event-editor-title">Add Event</strong>
+            </div>
+            <button class="icon-button" type="button" aria-label="Close" @click="closeDateEventEditor">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+
+          <form class="name-editor-body event-editor-body" @submit.prevent="saveDateEvent">
+            <label class="name-editor-field">
+              <span>Event</span>
+              <input
+                ref="eventEditorInput"
+                v-model="eventEditorValue"
+                type="text"
+                maxlength="80"
+                autocomplete="off"
+              />
+            </label>
+
+            <div class="name-editor-actions">
+              <button
+                v-if="shiftEventText(eventEditorShift)"
+                class="tool-button slim"
+                type="button"
+                @click="removeDateEvent"
+              >
+                <i data-lucide="trash-2"></i>
+                <span>Remove Event</span>
+              </button>
+              <button class="primary-button compact" type="submit">
+                <i data-lucide="save"></i>
+                <span>Save Event</span>
               </button>
             </div>
           </form>
