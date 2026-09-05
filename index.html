@@ -682,76 +682,92 @@
               </div>
             </section>
 
-            <section v-if="shiftEditorMode === 'off'" class="shift-editor-section">
-              <span class="shift-editor-label">Leave Type</span>
-              <label class="shift-al-toggle">
-                <input v-model="shiftEditorIsAl" type="checkbox" />
-                <span class="shift-switch-track" aria-hidden="true">
-                  <span></span>
-                </span>
-                <strong>AL</strong>
-              </label>
-            </section>
-
-            <template v-else>
-              <section class="shift-editor-section">
-                <span class="shift-editor-label">Start Time</span>
-                <div class="shift-time-picker" aria-label="Start time">
-                  <div class="shift-wheel-column">
-                    <small>Hour</small>
-                    <div
-                      class="shift-time-wheel"
-                      tabindex="0"
-                      @scroll.passive="handleShiftWheelScroll('hour', $event)"
-                    >
-                      <button
-                        v-for="hour in shiftEditorHours"
-                        :key="`hour-${hour}`"
-                        type="button"
-                        :data-value="hour"
-                        :class="{ active: shiftEditorHour === hour }"
-                        @click="setShiftEditorTime('hour', hour)"
+            <div class="shift-editor-dynamic">
+              <Transition name="shift-editor-panel" mode="out-in">
+                <div
+                  v-if="shiftEditorMode === 'off'"
+                  key="off"
+                  class="shift-editor-panel shift-editor-panel-off"
+                >
+                  <label class="name-editor-field shift-leave-field">
+                    <span>Leave Type</span>
+                    <select v-model="shiftEditorLeaveType" @change="normalizeShiftEditorLeaveType">
+                      <option
+                        v-for="leaveType in shiftEditorLeaveTypes"
+                        :key="leaveType"
+                        :value="leaveType"
                       >
-                        {{ hour }}
-                      </button>
-                    </div>
-                  </div>
-
-                  <strong class="shift-time-separator">:</strong>
-
-                  <div class="shift-wheel-column">
-                    <small>Minute</small>
-                    <div
-                      class="shift-time-wheel minute-wheel"
-                      tabindex="0"
-                      @scroll.passive="handleShiftWheelScroll('minute', $event)"
-                    >
-                      <button
-                        v-for="minute in shiftEditorMinutes"
-                        :key="`minute-${minute}`"
-                        type="button"
-                        :data-value="minute"
-                        :class="{ active: shiftEditorMinute === minute }"
-                        @click="setShiftEditorTime('minute', minute)"
-                      >
-                        {{ minute }}
-                      </button>
-                    </div>
-                  </div>
+                        {{ leaveType }}
+                      </option>
+                    </select>
+                  </label>
                 </div>
-              </section>
 
-              <label class="name-editor-field shift-context-field">
-                <span>Context</span>
-                <input
-                  v-model="shiftEditorContext"
-                  type="text"
-                  maxlength="24"
-                  autocomplete="off"
-                  placeholder="Optional, e.g. CDT or TR"
-                />
-              </label>
-            </template>
+                <div
+                  v-else
+                  key="work"
+                  class="shift-editor-panel shift-editor-panel-work"
+                >
+                  <section class="shift-editor-section">
+                    <span class="shift-editor-label">Start Time</span>
+                    <div class="shift-time-picker" aria-label="Start time">
+                      <div class="shift-wheel-column">
+                        <small>Hour</small>
+                        <div
+                          class="shift-time-wheel"
+                          tabindex="0"
+                          @scroll.passive="handleShiftWheelScroll('hour', $event)"
+                        >
+                          <button
+                            v-for="hour in shiftEditorHours"
+                            :key="`hour-${hour}`"
+                            type="button"
+                            :data-value="hour"
+                            :class="{ active: shiftEditorHour === hour }"
+                            @click="setShiftEditorTime('hour', hour)"
+                          >
+                            {{ hour }}
+                          </button>
+                        </div>
+                      </div>
+
+                      <strong class="shift-time-separator">:</strong>
+
+                      <div class="shift-wheel-column">
+                        <small>Minute</small>
+                        <div
+                          class="shift-time-wheel minute-wheel"
+                          tabindex="0"
+                          @scroll.passive="handleShiftWheelScroll('minute', $event)"
+                        >
+                          <button
+                            v-for="minute in shiftEditorMinutes"
+                            :key="`minute-${minute}`"
+                            type="button"
+                            :data-value="minute"
+                            :class="{ active: shiftEditorMinute === minute }"
+                            @click="setShiftEditorTime('minute', minute)"
+                          >
+                            {{ minute }}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <label class="name-editor-field shift-context-field">
+                    <span>Context</span>
+                    <input
+                      v-model="shiftEditorContext"
+                      type="text"
+                      maxlength="24"
+                      autocomplete="off"
+                      placeholder="Optional, e.g. CDT or TR"
+                    />
+                  </label>
+                </div>
+              </Transition>
+            </div>
 
             <div class="shift-editor-preview" aria-live="polite">
               <span>Saved as</span>

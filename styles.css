@@ -1573,12 +1573,15 @@ img {
 
 .name-editor-modal.shift-editor-modal {
   width: min(420px, calc(100vw - 24px));
+  height: min(660px, calc(100svh - 24px));
+  height: min(660px, calc(100dvh - 24px));
   max-height: min(660px, calc(100svh - 24px));
   max-height: min(660px, calc(100dvh - 24px));
 }
 
 .shift-editor-body {
   gap: 16px;
+  align-content: stretch;
 }
 
 .shift-editor-section {
@@ -1616,6 +1619,10 @@ img {
   color: var(--steel-soft);
   font-size: 0.92rem;
   font-weight: 850;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    transform 220ms cubic-bezier(0.16, 1.42, 0.38, 1);
 }
 
 .shift-mode-toggle button.active {
@@ -1626,6 +1633,7 @@ img {
   box-shadow:
     0 10px 18px rgba(0, 0, 0, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  animation: shift-mode-pop 260ms cubic-bezier(0.16, 1.42, 0.38, 1);
 }
 
 .shift-mode-toggle svg {
@@ -1633,55 +1641,80 @@ img {
   height: 16px;
 }
 
-.shift-al-toggle {
-  min-height: 52px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border: 1px solid rgba(216, 217, 213, 0.14);
-  border-radius: 8px;
-  padding: 10px 12px;
-  background: rgba(216, 217, 213, 0.06);
+.shift-editor-dynamic {
+  position: relative;
+  min-height: 294px;
+  display: grid;
+  align-items: start;
+  overflow: hidden;
 }
 
-.shift-al-toggle input {
-  position: absolute;
+.shift-editor-panel {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+  transform-origin: center top;
+}
+
+.shift-editor-panel-off {
+  min-height: 294px;
+  align-content: start;
+}
+
+.shift-editor-panel-enter-active {
+  transition:
+    opacity 260ms ease,
+    transform 360ms cubic-bezier(0.2, 1.45, 0.32, 1);
+}
+
+.shift-editor-panel-leave-active {
+  transition:
+    opacity 130ms ease,
+    transform 130ms ease;
+}
+
+.shift-editor-panel-enter-from {
   opacity: 0;
-  pointer-events: none;
+  transform: translateY(18px) scale(0.94);
 }
 
-.shift-switch-track {
-  width: 48px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 3px;
-  background: rgba(10, 23, 36, 0.74);
-  border: 1px solid rgba(216, 217, 213, 0.16);
+.shift-editor-panel-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.98);
 }
 
-.shift-switch-track span {
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  background: var(--mist);
-  transition: transform 150ms ease, background-color 150ms ease;
-}
-
-.shift-al-toggle input:checked + .shift-switch-track {
-  background: rgba(255, 231, 147, 0.34);
-  border-color: rgba(255, 231, 147, 0.52);
-}
-
-.shift-al-toggle input:checked + .shift-switch-track span {
-  transform: translateX(20px);
-  background: #ffe793;
-}
-
-.shift-al-toggle strong {
+.shift-leave-field select {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid rgba(216, 217, 213, 0.18);
+  border-radius: 8px;
+  padding: 0 42px 0 12px;
+  background:
+    linear-gradient(180deg, rgba(216, 217, 213, 0.08), rgba(216, 217, 213, 0.035)),
+    rgba(10, 23, 36, 0.76);
   color: var(--white);
-  font-size: 1rem;
+  font: inherit;
+  font-weight: 850;
+  outline: 0;
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--steel-soft) 50%),
+    linear-gradient(135deg, var(--steel-soft) 50%, transparent 50%),
+    linear-gradient(180deg, rgba(216, 217, 213, 0.08), rgba(216, 217, 213, 0.035));
+  background-position:
+    calc(100% - 22px) 50%,
+    calc(100% - 15px) 50%,
+    0 0;
+  background-size:
+    7px 7px,
+    7px 7px,
+    100% 100%;
+  background-repeat: no-repeat;
+}
+
+.shift-leave-field select:focus {
+  border-color: var(--steel-soft);
+  box-shadow: 0 0 0 3px rgba(125, 150, 179, 0.16);
 }
 
 .shift-time-picker {
@@ -1694,6 +1727,7 @@ img {
   border-radius: 8px;
   padding: 12px;
   background: rgba(10, 23, 36, 0.48);
+  touch-action: pan-y;
 }
 
 .shift-wheel-column {
@@ -1714,11 +1748,17 @@ img {
   position: relative;
   height: 144px;
   overflow-y: auto;
+  overflow-x: hidden;
   display: grid;
   gap: 6px;
   padding-block: 51px;
   border-radius: 8px;
   scroll-snap-type: y mandatory;
+  scroll-padding-block: 51px;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  user-select: none;
   scrollbar-width: none;
   background:
     linear-gradient(180deg, rgba(17, 30, 48, 0.94), rgba(17, 30, 48, 0) 32%, rgba(17, 30, 48, 0) 68%, rgba(17, 30, 48, 0.94)),
@@ -1730,6 +1770,7 @@ img {
 }
 
 .shift-time-wheel button {
+  width: 100%;
   min-height: 42px;
   border: 0;
   border-radius: 8px;
@@ -1738,6 +1779,8 @@ img {
   font-size: 1.36rem;
   font-weight: 850;
   scroll-snap-align: center;
+  scroll-snap-stop: always;
+  touch-action: pan-y;
   transition: background-color 120ms ease, color 120ms ease, transform 120ms ease;
 }
 
@@ -1784,6 +1827,18 @@ img {
   font-size: 1.1rem;
   overflow-wrap: anywhere;
   text-align: right;
+}
+
+@keyframes shift-mode-pop {
+  0% {
+    transform: scale(0.95);
+  }
+  62% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .name-editor-modal {
