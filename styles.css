@@ -35,18 +35,34 @@
 }
 
 html {
+  width: 100%;
+  height: 100%;
   min-height: 100%;
   background: var(--navy);
   touch-action: pan-x pan-y;
+  overflow: hidden;
+  overscroll-behavior: none;
   -webkit-text-size-adjust: 100%;
 }
 
 body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   min-height: 100svh;
   margin: 0;
   background: var(--navy);
   color: var(--white);
   font-family: var(--app-font);
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#app {
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 button,
@@ -79,11 +95,14 @@ img {
 
 .app-main {
   width: min(100%, 1120px);
-  min-height: 100svh;
+  height: 100svh;
+  height: 100dvh;
+  min-height: 0;
   display: grid;
   place-items: center;
   margin: 0 auto;
   padding: clamp(18px, 6svh, 42px) 12px;
+  overflow: hidden;
 }
 
 .app-main.with-results {
@@ -93,7 +112,7 @@ img {
 .app-main.is-editing {
   width: 100%;
   max-width: none;
-  min-height: 100dvh;
+  height: 100dvh;
   place-items: stretch;
   padding: 0;
 }
@@ -111,6 +130,7 @@ img {
 .schedule-panel,
 .status-panel {
   width: min(100%, 520px);
+  max-height: 100%;
   border: 1px solid var(--panel-border);
   border-radius: 8px;
   background: var(--panel);
@@ -294,11 +314,14 @@ img {
 
 .app-shell {
   width: 100%;
-  min-height: calc(100svh - clamp(36px, 12svh, 84px));
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .app-toolbar {
@@ -696,6 +719,7 @@ img {
 }
 
 .schedule-panel {
+  min-height: 0;
   display: grid;
   overflow: hidden;
   margin: 0 auto;
