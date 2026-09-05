@@ -294,6 +294,13 @@
                     :class="[shiftClass(item.shift), `is-${item.slot}`]"
                     @click="handleDayCardClick(item.slot)"
                   >
+                    <img
+                      class="day-off-panda"
+                      src="assets/app-icon.png"
+                      alt=""
+                      aria-hidden="true"
+                    />
+
                     <div class="day-card-topline">
                       <span>{{ shiftRelativeLabel(item.shift) }}</span>
                       <small>{{ item.shift.dateLabel }}</small>

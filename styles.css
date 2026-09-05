@@ -976,12 +976,37 @@ img {
   cursor: grabbing;
 }
 
+.day-off-panda {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  display: none;
+  border: 1px solid rgba(255, 246, 216, 0.64);
+  border-radius: 999px;
+  padding: 3px;
+  background: rgba(255, 246, 216, 0.92);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.day-shift-card.is-off .day-off-panda {
+  display: block;
+}
+
 .day-card-topline {
   min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.day-shift-card.is-off .day-card-topline {
+  padding-right: 42px;
 }
 
 .day-card-topline span,
@@ -2039,6 +2064,17 @@ img {
     width: min(100%, 222px);
     height: 208px;
     padding: 12px;
+  }
+
+  .day-off-panda {
+    top: 8px;
+    right: 8px;
+    width: 30px;
+    height: 30px;
+  }
+
+  .day-shift-card.is-off .day-card-topline {
+    padding-right: 36px;
   }
 
   .day-card-main {
