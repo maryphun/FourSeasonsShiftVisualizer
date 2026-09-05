@@ -59,6 +59,8 @@ createApp({
       dateEvents: {},
       eventEditorShift: null,
       eventEditorValue: "",
+      shiftEditorShift: null,
+      shiftEditorValue: "",
       showSpreadsheet: false,
       pendingReplace: false,
       readError: false,
@@ -161,6 +163,12 @@ createApp({
     eventEditorTitle() {
       if (!this.eventEditorShift) return "";
       return [this.shiftRelativeLabel(this.eventEditorShift), this.eventEditorShift.dateLabel]
+        .filter(Boolean)
+        .join(" - ");
+    },
+    shiftEditorTitle() {
+      if (!this.shiftEditorShift) return "";
+      return [this.shiftRelativeLabel(this.shiftEditorShift), this.shiftEditorShift.dateLabel]
         .filter(Boolean)
         .join(" - ");
     },
@@ -375,6 +383,7 @@ createApp({
       this.closeCoworkerModal();
       this.closeNameEditor();
       this.closeDateEventEditor();
+      this.closeShiftEditor();
       nextTick(() => this.refreshIcons());
     },
     returnToSchedule() {
@@ -659,6 +668,7 @@ createApp({
     changeProfile() {
       this.closeCoworkerModal();
       this.closeDateEventEditor();
+      this.closeShiftEditor();
       this.selectedProfileId = "";
       this.selectedShiftIndex = 0;
       removeCache(PROFILE_CACHE_KEY);
@@ -679,6 +689,8 @@ createApp({
       this.dateEvents = {};
       this.eventEditorShift = null;
       this.eventEditorValue = "";
+      this.shiftEditorShift = null;
+      this.shiftEditorValue = "";
       removeCache(EVENT_CACHE_KEY);
       this.statusText = "Upload Photo";
     },
@@ -692,6 +704,8 @@ createApp({
       this.selectedShiftIndex = 0;
       this.coworkerModalShift = null;
       this.eventEditorShift = null;
+      this.shiftEditorShift = null;
+      this.shiftEditorValue = "";
     },
     restoreDateEvents() {
       const events = readCache(EVENT_CACHE_KEY);
@@ -717,6 +731,7 @@ createApp({
       if (!shiftEventKey(shift)) return;
       this.closeCoworkerModal();
       this.closeNameEditor();
+      this.closeShiftEditor();
       this.eventEditorShift = shift;
       this.eventEditorValue = this.shiftEventText(shift);
       nextTick(() => {
@@ -728,6 +743,82 @@ createApp({
     closeDateEventEditor() {
       this.eventEditorShift = null;
       this.eventEditorValue = "";
+    },
+    openShiftEditor(shift = this.activeShift) {
+      if (!shift || !this.selectedProfile) return;
+      this.closeCoworkerModal();
+      this.closeDateEventEditor();
+      this.closeNameEditor();
+      this.shiftEditorShift = shift;
+      this.shiftEditorValue = String(shift.value || "");
+      nextTick(() => {
+        this.refreshIcons();
+        this.$refs.shiftEditorInput?.focus?.();
+        this.$refs.shiftEditorInput?.select?.();
+      });
+    },
+    closeShiftEditor() {
+      this.shiftEditorShift = null;
+      this.shiftEditorValue = "";
+    },
+    saveShiftEdit() {
+      if (!this.shiftEditorShift || !this.selectedProfile) return;
+
+      const value = normalizeManualShiftValue(this.shiftEditorValue);
+      if (!this.updateActiveShiftValue(this.shiftEditorShift, value)) {
+        this.statusText = "Could not find this shift in the CSV";
+        return;
+      }
+
+      this.statusText = "Shift saved";
+      this.closeShiftEditor();
+    },
+    clearShiftEditorValue() {
+      this.shiftEditorValue = "";
+      nextTick(() => this.$refs.shiftEditorInput?.focus?.());
+    },
+    updateActiveShiftValue(targetShift, value) {
+      const profile = this.selectedProfile;
+      const rowIndex = profile?.originalRow;
+      const columnIndex = targetShift?.columnIndex;
+      if (!this.rosterDb || !Number.isInteger(rowIndex) || !Number.isInteger(columnIndex)) return false;
+
+      let nextTable = this.table.map((row) => [...row]);
+      while (nextTable.length <= rowIndex) nextTable.push([]);
+      while (nextTable[rowIndex].length <= columnIndex) nextTable[rowIndex].push("");
+      nextTable[rowIndex][columnIndex] = value;
+      nextTable = padRows(nextTable);
+
+      const hints = { ...this.cellReviewHints };
+      delete hints[cellReviewKey(rowIndex, columnIndex)];
+      const nextHints = pruneReviewHintsForTable(hints, nextTable);
+      const nextProfiles = this.rosterDb.profiles.map((rosterProfile) => {
+        if (rosterProfile.id !== profile.id) return rosterProfile;
+
+        return {
+          ...rosterProfile,
+          shifts: rosterProfile.shifts.map((shift) =>
+            isSameShiftSlot(shift, targetShift)
+              ? {
+                  ...shift,
+                  value,
+                }
+              : shift,
+          ),
+        };
+      });
+      const nextRosterDb = {
+        ...this.rosterDb,
+        rawTable: nextTable,
+        reviewHints: nextHints,
+        profiles: nextProfiles,
+      };
+
+      this.table = nextTable;
+      this.cellReviewHints = nextHints;
+      this.rosterDb = nextRosterDb;
+      writeCache(ROSTER_CACHE_KEY, nextRosterDb);
+      return true;
     },
     saveDateEvent() {
       const key = shiftEventKey(this.eventEditorShift);
@@ -770,6 +861,7 @@ createApp({
     },
     openNameEditor(profile) {
       if (!profile?.name) return;
+      this.closeShiftEditor();
       this.nameEditorProfile = profile;
       this.nameEditorValue = this.displayProfileName(profile);
       nextTick(() => {
@@ -1694,6 +1786,16 @@ function findMatchingShift(shifts, targetShift) {
   );
 }
 
+function isSameShiftSlot(shift, targetShift) {
+  if (!shift || !targetShift) return false;
+  if (shift === targetShift) return true;
+  if (shift.dateKey && targetShift.dateKey) return shift.dateKey === targetShift.dateKey;
+  if (Number.isInteger(shift.columnIndex) && Number.isInteger(targetShift.columnIndex)) {
+    return shift.columnIndex === targetShift.columnIndex;
+  }
+  return shift.day === targetShift.day && shift.dateLabel === targetShift.dateLabel;
+}
+
 function shiftSortValue(value) {
   const startHour = shiftStartHour(value);
   return Number.isFinite(startHour) ? startHour : Number.POSITIVE_INFINITY;
@@ -2331,6 +2433,15 @@ function normalizeOcrShiftCell(value) {
   const tokenMatch = compact.match(/\b(?:OFF|ROFF|SAL|AL|\/|\d{1,2}(?::[0-5]\d|\.[05])?(?:\s*(?:\([A-Z0-9 ]{1,10}\)|[A-Z]{1,10}))?)\b/);
   const token = tokenMatch ? canonicalShiftValue(tokenMatch[0]) : "";
   return { value: token };
+}
+
+function normalizeManualShiftValue(value) {
+  const text = String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return "";
+
+  return canonicalShiftValue(text) || normalizeCell(text);
 }
 
 function canonicalShiftValue(value) {

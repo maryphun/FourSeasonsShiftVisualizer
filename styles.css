@@ -1567,6 +1567,10 @@ img {
   z-index: 60;
 }
 
+.shift-editor-backdrop {
+  z-index: 60;
+}
+
 .name-editor-modal {
   width: min(370px, calc(100vw - 24px));
   max-width: 100%;
