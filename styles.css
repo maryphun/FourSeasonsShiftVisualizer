@@ -978,16 +978,16 @@ img {
 
 .day-shift-panda {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 8px;
+  right: 9px;
   z-index: 2;
-  width: 42px;
-  height: 52px;
-  border: 1px solid rgba(216, 217, 213, 0.58);
-  border-radius: 12px;
-  padding: 2px;
-  background: rgba(238, 240, 237, 0.94);
-  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.2);
+  width: 52px;
+  height: 64px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
   object-fit: contain;
   object-position: center;
   pointer-events: none;
@@ -995,8 +995,7 @@ img {
 }
 
 .day-shift-card.is-off .day-shift-panda {
-  border-color: rgba(255, 246, 216, 0.72);
-  background: rgba(255, 246, 216, 0.94);
+  background: transparent;
 }
 
 .day-card-topline {
@@ -1008,7 +1007,7 @@ img {
 }
 
 .day-shift-card.has-shift-art .day-card-topline {
-  padding-right: 52px;
+  padding-right: 62px;
 }
 
 .day-card-topline span,
@@ -2069,14 +2068,14 @@ img {
   }
 
   .day-shift-panda {
-    top: 8px;
-    right: 8px;
-    width: 36px;
-    height: 46px;
+    top: 7px;
+    right: 7px;
+    width: 46px;
+    height: 58px;
   }
 
   .day-shift-card.has-shift-art .day-card-topline {
-    padding-right: 44px;
+    padding-right: 54px;
   }
 
   .day-card-main {
