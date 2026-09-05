@@ -398,6 +398,17 @@
                   <i data-lucide="pencil"></i>
                   <span>Edit</span>
                 </button>
+                <button
+                  class="add-event-button reminder-day-button"
+                  type="button"
+                  :class="{ active: reminderEnabled }"
+                  :disabled="!canEnableReminders"
+                  :title="reminderStatusText"
+                  @click="enableDailyReminders"
+                >
+                  <i data-lucide="bell"></i>
+                  <span>{{ reminderButtonLabel }}</span>
+                </button>
               </div>
 
               <div class="day-pills" aria-label="Month days">

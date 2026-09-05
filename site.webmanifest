@@ -1,7 +1,9 @@
 {
   "name": "Schedule Photo Reader",
   "short_name": "Shift Reader",
-  "start_url": ".",
+  "id": "/",
+  "scope": "/",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#0a1724",
   "theme_color": "#0a1724",

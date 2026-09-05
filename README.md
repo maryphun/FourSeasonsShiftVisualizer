@@ -83,6 +83,18 @@ Set your Google Vision key as a Cloudflare secret:
 npx.cmd wrangler secret put GOOGLE_VISION_API_KEY
 ```
 
+Create the KV namespace used for daily event alerts:
+
+```powershell
+npx.cmd wrangler kv namespace create REMINDER_STORE
+```
+
+Copy the `id` from Wrangler's output, then set it before local deploy:
+
+```powershell
+$env:REMINDER_STORE_KV_ID="YOUR_KV_NAMESPACE_ID"
+```
+
 Deploy:
 
 ```powershell
@@ -90,6 +102,10 @@ npm.cmd run deploy
 ```
 
 Cloudflare will give you a free `*.workers.dev` URL after deployment.
+
+Daily event alerts use a Worker cron trigger at minute `1` every hour. The Worker checks
+each phone's timezone and only sends when that user's local time is just after `00:01`.
+On iPhone, install the site to the Home Screen first, then enable alerts from the app.
 
 ## Automatic deploy from GitHub
 
@@ -101,6 +117,8 @@ Before the first automatic deploy, add these repository secrets in GitHub:
 ```text
 CLOUDFLARE_ACCOUNT_ID
 CLOUDFLARE_API_TOKEN
+GOOGLE_VISION_API_KEY
+REMINDER_STORE_KV_ID
 ```
 
 In GitHub, open the repository, then go to:
@@ -118,8 +136,8 @@ Cloudflare Dashboard > My Profile > API Tokens
 The token needs permission to deploy Workers, such as `Workers Scripts Edit` on the
 Cloudflare account that owns this Worker.
 
-The Google Vision runtime secret is stored in Cloudflare, not GitHub. If you deploy under
-a new Worker name or a new Cloudflare account, set it again:
+The GitHub workflow uploads the Google Vision key as a Cloudflare secret during deploy.
+If you deploy manually under a new Worker name or a new Cloudflare account, set it again:
 
 ```powershell
 npx.cmd wrangler secret put GOOGLE_VISION_API_KEY

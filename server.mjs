@@ -17,6 +17,7 @@ const mimeTypes = new Map([
   [".js", "text/javascript; charset=utf-8"],
   [".mjs", "text/javascript; charset=utf-8"],
   [".json", "application/json; charset=utf-8"],
+  [".webmanifest", "application/manifest+json; charset=utf-8"],
   [".png", "image/png"],
   [".jpg", "image/jpeg"],
   [".jpeg", "image/jpeg"],
@@ -44,6 +45,11 @@ const server = http.createServer(async (request, response) => {
         ok: true,
         googleAuth: await describeConfiguredAuth(),
       });
+      return;
+    }
+
+    if (requestUrl.pathname.startsWith("/api/reminders/")) {
+      await handleReminderStub(request, response, requestUrl.pathname);
       return;
     }
 
@@ -140,6 +146,39 @@ async function handleVersion(response) {
   sendJson(response, 200, {
     version: extractAppVersion(html),
   });
+}
+
+async function handleReminderStub(request, response, pathname) {
+  if (request.method === "GET" && pathname === "/api/reminders/config") {
+    sendJson(response, 200, {
+      enabled: false,
+      publicKey: "",
+      reason: "Daily alerts need the Cloudflare reminder store.",
+    });
+    return;
+  }
+
+  if (request.method === "POST" && pathname === "/api/reminders/today") {
+    await readJsonBody(request).catch(() => ({}));
+    sendJson(response, 200, {
+      dateKey: "",
+      events: [],
+    });
+    return;
+  }
+
+  if (
+    request.method === "POST" &&
+    (pathname === "/api/reminders/events" || pathname === "/api/reminders/subscribe")
+  ) {
+    await readJsonBody(request).catch(() => ({}));
+    sendJson(response, 503, {
+      error: "Daily alerts are not available on the local test server.",
+    });
+    return;
+  }
+
+  sendJson(response, 404, { error: "Not found" });
 }
 
 async function serveStatic(request, response) {

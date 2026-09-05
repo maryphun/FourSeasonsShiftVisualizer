@@ -7,7 +7,7 @@
     "build": "node tools/build-public.mjs",
     "dev": "node server.mjs",
     "dev:cloudflare": "npm run build && wrangler dev",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && node tools/prepare-cloudflare-config.mjs && wrangler deploy --config wrangler.generated.jsonc"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"

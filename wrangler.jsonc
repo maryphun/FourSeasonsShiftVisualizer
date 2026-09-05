@@ -12,6 +12,9 @@
   "observability": {
     "enabled": true
   },
+  "triggers": {
+    "crons": ["1 * * * *"]
+  },
   "secrets": {
     "required": ["GOOGLE_VISION_API_KEY"]
   }

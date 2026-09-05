@@ -5,6 +5,7 @@ const ROSTER_CACHE_KEY = "schedulePhotoReader.roster.v1";
 const PROFILE_CACHE_KEY = "schedulePhotoReader.profile.v1";
 const NAME_CACHE_KEY = "schedulePhotoReader.nameAliases.v1";
 const EVENT_CACHE_KEY = "schedulePhotoReader.dateEvents.v1";
+const REMINDER_CLIENT_CACHE_KEY = "schedulePhotoReader.reminderClient.v1";
 const VERSION_REFRESH_CACHE_KEY = "schedulePhotoReader.versionRefresh.v1";
 const VERSION_CHECK_MIN_INTERVAL_MS = 30000;
 const DAY_TRANSITION_MS = 260;
@@ -71,6 +72,14 @@ createApp({
       shiftEditorMinute: "00",
       shiftEditorContext: "",
       shiftWheelScrollTimer: null,
+      reminderClientId: "",
+      reminderPublicKey: "",
+      reminderSupported: false,
+      reminderConfigured: false,
+      reminderEnabled: false,
+      reminderRegistration: null,
+      reminderStatusText: "",
+      isReminderBusy: false,
       showSpreadsheet: false,
       pendingReplace: false,
       readError: false,
@@ -200,6 +209,15 @@ createApp({
         context: this.shiftEditorContext,
       });
     },
+    reminderButtonLabel() {
+      if (this.isReminderBusy) return "Saving...";
+      if (!this.reminderSupported) return "No Alerts";
+      if (!this.reminderConfigured) return "Alerts Off";
+      return this.reminderEnabled ? "Alerts On" : "Enable Alerts";
+    },
+    canEnableReminders() {
+      return this.reminderSupported && this.reminderConfigured && !this.isReminderBusy;
+    },
     dayCarouselItems() {
       const shifts = this.selectedProfile?.shifts || [];
       const count = shifts.length;
@@ -320,6 +338,7 @@ createApp({
     this.checkHealth();
     this.bindVersionWakeChecks();
     this.checkAppVersion({ force: true });
+    this.setupDailyReminders();
     this.refreshIcons();
   },
   updated() {
@@ -721,6 +740,7 @@ createApp({
       this.shiftEditorShift = null;
       this.shiftEditorValue = "";
       removeCache(EVENT_CACHE_KEY);
+      this.syncReminderEvents();
       this.statusText = "Upload Photo";
     },
     clearCachedRosterOnly() {
@@ -748,6 +768,122 @@ createApp({
           .map(([key, value]) => [key, normalizeEventText(value)])
           .filter(([key, value]) => key && value)
       );
+    },
+    async setupDailyReminders() {
+      this.reminderClientId = getOrCreateReminderClientId();
+      this.reminderSupported = canUsePushReminders();
+
+      if (!this.reminderSupported) {
+        this.reminderStatusText = "Push alerts are not supported in this browser.";
+        return;
+      }
+
+      try {
+        const [registration, config] = await Promise.all([
+          navigator.serviceWorker.register("/service-worker.js").then(() => navigator.serviceWorker.ready),
+          fetch("/api/reminders/config", { cache: "no-store" }).then((response) => response.json()),
+        ]);
+
+        this.reminderRegistration = registration;
+        this.reminderConfigured = Boolean(config.enabled && config.publicKey);
+        this.reminderPublicKey = config.publicKey || "";
+
+        if (!this.reminderConfigured) {
+          this.reminderStatusText = config.reason || "Daily alerts are not configured yet.";
+          return;
+        }
+
+        const subscription = await registration.pushManager.getSubscription();
+        this.reminderEnabled = Boolean(subscription);
+        if (subscription) {
+          await this.registerReminderSubscription(subscription);
+          await this.syncReminderEvents();
+        }
+
+        this.reminderStatusText = this.reminderEnabled
+          ? "Daily alerts are enabled."
+          : "Daily alerts can be enabled for event reminders.";
+      } catch (error) {
+        console.info("Daily reminder setup skipped", error);
+        this.reminderStatusText = "Daily alerts are not ready yet.";
+      }
+    },
+    async enableDailyReminders() {
+      if (this.isReminderBusy) return;
+
+      if (!this.reminderSupported || !this.reminderConfigured) {
+        await this.setupDailyReminders();
+        if (!this.canEnableReminders) return;
+      }
+
+      this.isReminderBusy = true;
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          this.reminderEnabled = false;
+          this.reminderStatusText = "Notification permission was not granted.";
+          return;
+        }
+
+        const registration = this.reminderRegistration || (await navigator.serviceWorker.ready);
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: base64UrlToUint8Array(this.reminderPublicKey),
+          });
+        }
+
+        await this.registerReminderSubscription(subscription);
+        await this.syncReminderEvents();
+        this.reminderRegistration = registration;
+        this.reminderEnabled = true;
+        this.reminderStatusText = "Daily alerts are enabled.";
+      } catch (error) {
+        console.warn("Could not enable daily reminders", error);
+        this.reminderStatusText = error.message || "Could not enable daily alerts.";
+      } finally {
+        this.isReminderBusy = false;
+      }
+    },
+    async registerReminderSubscription(subscription) {
+      if (!subscription || !this.reminderClientId || !this.reminderConfigured) return;
+
+      const response = await fetch("/api/reminders/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          clientId: this.reminderClientId,
+          timezone: clientTimezone(),
+          subscription: subscription.toJSON(),
+        }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || "Could not save push subscription.");
+      }
+    },
+    async syncReminderEvents() {
+      if (!this.reminderClientId || !this.reminderConfigured) return;
+
+      try {
+        await fetch("/api/reminders/events", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            clientId: this.reminderClientId,
+            timezone: clientTimezone(),
+            events: this.dateEvents,
+          }),
+        });
+      } catch (error) {
+        console.info("Event reminder sync skipped", error);
+      }
     },
     shiftEventText(shift) {
       const key = shiftEventKey(shift);
@@ -927,6 +1063,7 @@ createApp({
 
       this.dateEvents = nextEvents;
       writeCache(EVENT_CACHE_KEY, nextEvents);
+      this.syncReminderEvents();
       this.closeDateEventEditor();
     },
     removeDateEvent() {
@@ -937,6 +1074,7 @@ createApp({
       delete nextEvents[key];
       this.dateEvents = nextEvents;
       writeCache(EVENT_CACHE_KEY, nextEvents);
+      this.syncReminderEvents();
       this.closeDateEventEditor();
     },
     restoreNameAliases() {
@@ -2014,6 +2152,32 @@ function removeCache(key) {
   } catch (error) {
     console.warn("Could not clear local cache", error);
   }
+}
+
+function canUsePushReminders() {
+  return Boolean("serviceWorker" in navigator && "PushManager" in window && "Notification" in window);
+}
+
+function getOrCreateReminderClientId() {
+  const cached = readTextCache(REMINDER_CLIENT_CACHE_KEY);
+  if (cached) return cached;
+
+  const id =
+    window.crypto?.randomUUID?.() ||
+    `client-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+  writeTextCache(REMINDER_CLIENT_CACHE_KEY, id);
+  return id;
+}
+
+function clientTimezone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Tokyo";
+}
+
+function base64UrlToUint8Array(value) {
+  const padding = "=".repeat((4 - (value.length % 4)) % 4);
+  const base64 = `${value}${padding}`.replace(/-/g, "+").replace(/_/g, "/");
+  const binary = window.atob(base64);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
 function loadImage(src) {

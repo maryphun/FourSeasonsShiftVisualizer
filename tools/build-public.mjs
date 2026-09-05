@@ -9,6 +9,7 @@ const staticEntries = [
   "index.html",
   "app.js",
   "styles.css",
+  "service-worker.js",
   "site.webmanifest",
   "assets",
 ];
