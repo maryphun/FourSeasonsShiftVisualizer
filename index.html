@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="styles.css?v=2026090501" />
     <script defer src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script defer src="https://unpkg.com/lucide@latest"></script>
+    <script defer src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script defer src="app.js?v=2026090501"></script>
   </head>
   <body>
@@ -377,7 +378,16 @@
               <div class="day-event-tools">
                 <button class="add-event-button" type="button" @click="openDateEventEditor(activeShift)">
                   <i data-lucide="calendar-plus"></i>
-                  <span>Add Event</span>
+                  <span>{{ eventActionLabel(activeShift) }}</span>
+                </button>
+                <button
+                  class="add-event-button share-day-button"
+                  type="button"
+                  :disabled="isSharing || Boolean(dayTransitionDirection) || dayIsFastTraveling"
+                  @click="shareActiveShift"
+                >
+                  <i data-lucide="share-2"></i>
+                  <span>{{ isSharing ? "Sharing..." : "Share" }}</span>
                 </button>
               </div>
 
@@ -578,7 +588,7 @@
           <div class="coworker-modal-head">
             <div>
               <span>{{ eventEditorTitle }}</span>
-              <strong id="event-editor-title">Add Event</strong>
+              <strong id="event-editor-title">{{ eventActionLabel(eventEditorShift) }}</strong>
             </div>
             <button class="icon-button" type="button" aria-label="Close" @click="closeDateEventEditor">
               <i data-lucide="x"></i>

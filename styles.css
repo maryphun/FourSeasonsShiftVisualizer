@@ -1223,6 +1223,8 @@ img {
 .day-event-tools {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
   padding: 0 16px;
 }
 
@@ -1268,6 +1270,12 @@ img {
 
 .add-event-button:active {
   transform: translateY(1px);
+}
+
+.add-event-button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+  transform: none;
 }
 
 .day-carousel-card {

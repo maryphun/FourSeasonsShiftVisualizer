@@ -24,6 +24,7 @@ createApp({
       previewUrl: "",
       isDragging: false,
       isProcessing: false,
+      isSharing: false,
       progress: 0,
       statusText: "Upload Photo",
       table: [],
@@ -708,6 +709,9 @@ createApp({
       const key = shiftEventKey(shift);
       return key ? this.dateEvents[key] || "" : "";
     },
+    eventActionLabel(shift) {
+      return this.shiftEventText(shift) ? "Edit Event" : "Add Event";
+    },
     openDateEventEditor(shift = this.activeShift) {
       if (!shiftEventKey(shift)) return;
       this.closeCoworkerModal();
@@ -1112,6 +1116,80 @@ createApp({
     closeDataEditor() {
       this.showSpreadsheet = false;
       nextTick(() => this.refreshIcons());
+    },
+    async shareActiveShift() {
+      if (!this.activeShift || this.isSharing || this.dayTransitionDirection || this.dayIsFastTraveling) return;
+
+      this.isSharing = true;
+      this.statusText = "Preparing shift card...";
+
+      try {
+        const card = document.querySelector(".day-carousel-card.is-active");
+        if (!card) throw new Error("No shift card is available to share.");
+        if (!window.html2canvas) throw new Error("Share image tool is still loading. Try again in a moment.");
+
+        await waitForFonts();
+        await waitForImages(card);
+
+        const canvas = await window.html2canvas(card, {
+          backgroundColor: null,
+          imageTimeout: 3000,
+          logging: false,
+          removeContainer: true,
+          scale: Math.min(3, Math.max(2, window.devicePixelRatio || 2)),
+          useCORS: true,
+        });
+        const blob = await canvasToPngBlob(canvas);
+        const fileName = `${baseFileName(this.shareShiftFileName(this.activeShift))}.png`;
+        const file = new File([blob], fileName, { type: "image/png" });
+
+        if (isLikelyPhone() && canShareFile(file)) {
+          await navigator.share({
+            files: [file],
+            title: "Shift card",
+            text: this.shareShiftText(this.activeShift),
+          });
+          this.statusText = "Share sheet opened";
+          return;
+        }
+
+        if (await copyPngToClipboard(blob)) {
+          this.statusText = "Shift card copied to clipboard";
+          return;
+        }
+
+        if (canShareFile(file)) {
+          await navigator.share({
+            files: [file],
+            title: "Shift card",
+            text: this.shareShiftText(this.activeShift),
+          });
+          this.statusText = "Share sheet opened";
+          return;
+        }
+
+        downloadBlob(blob, fileName);
+        this.statusText = "Shift card downloaded";
+      } catch (error) {
+        this.statusText =
+          error?.name === "AbortError" ? "Share cancelled" : error.message || "Could not share this shift card";
+      } finally {
+        this.isSharing = false;
+      }
+    },
+    shareShiftText(shift) {
+      return [
+        this.displayProfileName(this.selectedProfile),
+        shift?.dateLabel,
+        this.displayShift(shift?.value),
+      ]
+        .filter(Boolean)
+        .join(" - ");
+    },
+    shareShiftFileName(shift) {
+      return ["shift", this.displayProfileName(this.selectedProfile), shift?.dateKey || shift?.dateLabel]
+        .filter(Boolean)
+        .join("-");
     },
     cellReviewHint(rowIndex, cellIndex) {
       return this.cellReviewHints[cellReviewKey(rowIndex, cellIndex)] || "";
@@ -2320,6 +2398,80 @@ function monthShortName(monthNumber) {
 function csvCell(value) {
   const text = String(value ?? "");
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+async function waitForFonts() {
+  try {
+    if (document.fonts?.ready) await document.fonts.ready;
+  } catch {
+    // Sharing still works with fallback fonts.
+  }
+}
+
+async function waitForImages(root) {
+  const images = [...root.querySelectorAll("img")].filter((image) => !image.complete);
+  await Promise.all(
+    images.map(
+      (image) =>
+        new Promise((resolve) => {
+          image.addEventListener("load", resolve, { once: true });
+          image.addEventListener("error", resolve, { once: true });
+        }),
+    ),
+  );
+}
+
+function canvasToPngBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+        return;
+      }
+
+      reject(new Error("Could not create share image."));
+    }, "image/png");
+  });
+}
+
+function isLikelyPhone() {
+  const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches;
+  const narrowViewport = window.matchMedia?.("(max-width: 760px)")?.matches;
+  const shortEdge = Math.min(window.screen?.width || window.innerWidth, window.screen?.height || window.innerHeight);
+  return Boolean(coarsePointer && narrowViewport && shortEdge <= 820);
+}
+
+function canShareFile(file) {
+  try {
+    return Boolean(navigator.share && navigator.canShare?.({ files: [file] }));
+  } catch {
+    return false;
+  }
+}
+
+async function copyPngToClipboard(blob) {
+  if (!navigator.clipboard || !window.ClipboardItem) return false;
+
+  try {
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        [blob.type]: blob,
+      }),
+    ]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function downloadBlob(blob, fileName) {
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 500);
 }
 
 function baseFileName(name) {
