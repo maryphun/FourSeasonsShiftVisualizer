@@ -37,6 +37,8 @@
 html {
   min-height: 100%;
   background: var(--navy);
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -52,9 +54,16 @@ input {
   font: inherit;
 }
 
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
 button {
   border: 0;
   cursor: pointer;
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -1716,7 +1725,7 @@ img {
   padding: 0 7px;
   background: var(--cell);
   color: var(--navy);
-  font-size: 0.82rem;
+  font-size: 16px;
   font-weight: 650;
   outline-offset: -3px;
 }
