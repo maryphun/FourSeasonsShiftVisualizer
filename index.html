@@ -265,28 +265,34 @@
                 <small>{{ selectedShiftIndex + 1 }} / {{ selectedProfile.shifts.length }}</small>
               </div>
 
-              <div class="day-carousel">
+              <div
+                class="day-carousel"
+                @pointerdown="startDaySwipe"
+                @pointermove="moveDaySwipe"
+                @pointerup="finishDaySwipe"
+                @pointercancel="cancelDaySwipe"
+              >
                 <button
                   class="carousel-arrow day-arrow"
                   type="button"
                   :disabled="selectedProfile.shifts.length <= 1 || Boolean(dayTransitionDirection) || dayIsFastTraveling"
                   aria-label="Previous day"
-                  @click="previousDay"
+                  @click="handleDayArrowClick('previous')"
                 >
                   <i data-lucide="chevron-left"></i>
                 </button>
 
-                <div class="day-carousel-viewport" :class="dayStageClass" :style="dayStageStyle">
+                <div
+                  class="day-carousel-viewport"
+                  :class="dayStageClass"
+                  :style="dayStageStyle"
+                >
                   <article
                     v-for="item in dayCarouselItems"
                     :key="`${item.slot}-${item.shift.dateKey || item.shift.dateLabel}`"
                     class="day-shift-card day-carousel-card"
                     :class="[shiftClass(item.shift), `is-${item.slot}`]"
                     @click="handleDayCardClick(item.slot)"
-                    @pointerdown.stop="startDaySwipe"
-                    @pointermove.stop="moveDaySwipe"
-                    @pointerup.stop="finishDaySwipe"
-                    @pointercancel.stop="cancelDaySwipe"
                   >
                     <div class="day-card-topline">
                       <span>{{ shiftRelativeLabel(item.shift) }}</span>
@@ -326,7 +332,7 @@
                   type="button"
                   :disabled="selectedProfile.shifts.length <= 1 || Boolean(dayTransitionDirection) || dayIsFastTraveling"
                   aria-label="Next day"
-                  @click="nextDay"
+                  @click="handleDayArrowClick('next')"
                 >
                   <i data-lucide="chevron-right"></i>
                 </button>

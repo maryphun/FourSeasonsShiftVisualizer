@@ -38,6 +38,8 @@ createApp({
       dayFastTravelTimer: null,
       dayTransitionDirection: "",
       dayTransitionTimer: null,
+      daySuppressClick: false,
+      daySuppressClickTimer: null,
       coworkerModalShift: null,
       nameAliases: {},
       nameEditorProfile: null,
@@ -815,6 +817,7 @@ createApp({
     resetDayMotion() {
       window.clearTimeout(this.dayTransitionTimer);
       window.clearTimeout(this.dayFastTravelTimer);
+      window.clearTimeout(this.daySuppressClickTimer);
       this.daySwipeX = null;
       this.daySwipeY = null;
       this.dayDragOffset = 0;
@@ -825,14 +828,30 @@ createApp({
       this.dayFastTravelTimer = null;
       this.dayTransitionDirection = "";
       this.dayTransitionTimer = null;
+      this.daySuppressClick = false;
+      this.daySuppressClickTimer = null;
+    },
+    suppressNextDayClick() {
+      window.clearTimeout(this.daySuppressClickTimer);
+      this.daySuppressClick = true;
+      this.daySuppressClickTimer = window.setTimeout(() => {
+        this.daySuppressClick = false;
+        this.daySuppressClickTimer = null;
+      }, 180);
+    },
+    handleDayArrowClick(direction) {
+      if (this.daySuppressClick || this.dayIsDragging || this.dayTransitionDirection || this.dayIsFastTraveling) return;
+      if (direction === "previous") this.previousDay();
+      if (direction === "next") this.nextDay();
     },
     handleDayCardClick(slot) {
-      if (this.dayIsDragging || this.dayTransitionDirection || this.dayIsFastTraveling) return;
+      if (this.daySuppressClick || this.dayIsDragging || this.dayTransitionDirection || this.dayIsFastTraveling) return;
       if (slot === "previous") this.previousDay();
       if (slot === "next") this.nextDay();
     },
     startDaySwipe(event) {
       if (this.dayTransitionDirection || this.dayIsFastTraveling) return;
+      if (event.pointerType === "mouse" && event.button !== 0) return;
       this.daySwipeX = Number(event.clientX);
       this.daySwipeY = Number(event.clientY);
       this.dayDragOffset = 0;
@@ -846,18 +865,21 @@ createApp({
       const verticalDistance = Math.abs(Number(event.clientY) - this.daySwipeY);
       if (Math.abs(distance) < verticalDistance) return;
 
+      if (Math.abs(distance) > 8) event.preventDefault?.();
       this.dayDragOffset = distance * 0.62;
     },
     finishDaySwipe(event) {
       if (this.daySwipeX === null) return;
       const distance = Number(event.clientX) - this.daySwipeX;
       const verticalDistance = Math.abs(Number(event.clientY) - this.daySwipeY);
+      const isHorizontalGesture = Math.abs(distance) >= 10 && Math.abs(distance) >= verticalDistance;
       this.daySwipeX = null;
       this.daySwipeY = null;
       this.dayIsDragging = false;
       this.dayDragOffset = 0;
       event.currentTarget?.releasePointerCapture?.(event.pointerId);
 
+      if (isHorizontalGesture) this.suppressNextDayClick();
       if (Math.abs(distance) < 42 || Math.abs(distance) < verticalDistance) return;
       if (distance > 0) {
         this.previousDay();

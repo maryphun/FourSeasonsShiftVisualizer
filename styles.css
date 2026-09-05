@@ -889,6 +889,13 @@ img {
   grid-template-columns: 42px minmax(0, 1fr) 42px;
   align-items: center;
   gap: 0;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.day-carousel:active {
+  cursor: grabbing;
 }
 
 .day-arrow {
