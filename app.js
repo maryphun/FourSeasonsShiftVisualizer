@@ -1,9 +1,12 @@
 const { createApp, nextTick } = Vue;
 
+const APP_VERSION = readCurrentAppVersion();
 const ROSTER_CACHE_KEY = "schedulePhotoReader.roster.v1";
 const PROFILE_CACHE_KEY = "schedulePhotoReader.profile.v1";
 const NAME_CACHE_KEY = "schedulePhotoReader.nameAliases.v1";
 const EVENT_CACHE_KEY = "schedulePhotoReader.dateEvents.v1";
+const VERSION_REFRESH_CACHE_KEY = "schedulePhotoReader.versionRefresh.v1";
+const VERSION_CHECK_MIN_INTERVAL_MS = 30000;
 const DAY_TRANSITION_MS = 260;
 const DAY_FAST_TRANSITION_MS = 36;
 const DAY_FAST_FRAME_GAP_MS = 6;
@@ -59,6 +62,9 @@ createApp({
       runId: 0,
       serverAuth: "not configured",
       googleApiKey: "",
+      lastVersionCheckAt: 0,
+      isRefreshingForVersion: false,
+      versionWakeHandlers: null,
     };
   },
   computed: {
@@ -270,6 +276,8 @@ createApp({
     this.restoreDateEvents();
     this.restoreCachedRoster();
     this.checkHealth();
+    this.bindVersionWakeChecks();
+    this.checkAppVersion({ force: true });
     this.refreshIcons();
   },
   updated() {
@@ -280,8 +288,77 @@ createApp({
     window.clearTimeout(this.profileTransitionTimer);
     window.clearTimeout(this.dayTransitionTimer);
     window.clearTimeout(this.dayFastTravelTimer);
+    this.unbindVersionWakeChecks();
   },
   methods: {
+    bindVersionWakeChecks() {
+      if (this.versionWakeHandlers) return;
+
+      this.versionWakeHandlers = {
+        visibility: () => {
+          if (document.visibilityState === "visible") {
+            this.checkAppVersion({ force: true });
+          }
+        },
+        focus: () => this.checkAppVersion(),
+        pageshow: (event) => this.checkAppVersion({ force: Boolean(event.persisted) }),
+      };
+
+      document.addEventListener("visibilitychange", this.versionWakeHandlers.visibility);
+      window.addEventListener("focus", this.versionWakeHandlers.focus);
+      window.addEventListener("pageshow", this.versionWakeHandlers.pageshow);
+    },
+    unbindVersionWakeChecks() {
+      if (!this.versionWakeHandlers) return;
+
+      document.removeEventListener("visibilitychange", this.versionWakeHandlers.visibility);
+      window.removeEventListener("focus", this.versionWakeHandlers.focus);
+      window.removeEventListener("pageshow", this.versionWakeHandlers.pageshow);
+      this.versionWakeHandlers = null;
+    },
+    async checkAppVersion(options = {}) {
+      if (this.isRefreshingForVersion) return;
+
+      const now = Date.now();
+      if (!options.force && now - this.lastVersionCheckAt < VERSION_CHECK_MIN_INTERVAL_MS) return;
+      this.lastVersionCheckAt = now;
+
+      try {
+        const response = await fetch(`/api/version?local=${APP_VERSION}&t=${now}`, {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache",
+          },
+        });
+        if (!response.ok) return;
+
+        const result = await response.json();
+        const remoteVersion = Number(result.version);
+        if (!Number.isFinite(remoteVersion)) return;
+
+        if (remoteVersion === APP_VERSION) {
+          window.sessionStorage.removeItem(VERSION_REFRESH_CACHE_KEY);
+          return;
+        }
+
+        this.forceVersionRefresh(remoteVersion);
+      } catch (error) {
+        console.info("App version check skipped", error);
+      }
+    },
+    forceVersionRefresh(remoteVersion) {
+      const version = String(remoteVersion);
+      const lastRefresh = window.sessionStorage.getItem(VERSION_REFRESH_CACHE_KEY);
+      if (lastRefresh === version) return;
+
+      window.sessionStorage.setItem(VERSION_REFRESH_CACHE_KEY, version);
+      this.isRefreshingForVersion = true;
+
+      const url = new URL(window.location.href);
+      url.searchParams.set("appVersion", version);
+      url.searchParams.set("refresh", String(Date.now()));
+      window.location.replace(url.toString());
+    },
     openPicker() {
       this.$refs.fileInput.click();
     },
@@ -769,6 +846,10 @@ createApp({
     otherWorkingCount(shift) {
       return this.otherWorkingProfiles(shift).length;
     },
+    handleCoworkerButtonClick(shift) {
+      if (this.daySuppressClick || this.dayIsDragging || this.dayTransitionDirection || this.dayIsFastTraveling) return;
+      this.openCoworkerModal(shift);
+    },
     openCoworkerModal(shift) {
       if (!shift || !this.otherWorkingCount(shift)) return;
       this.coworkerModalShift = shift;
@@ -1056,6 +1137,30 @@ createApp({
     },
   },
 }).mount("#app");
+
+function readCurrentAppVersion() {
+  const currentScript =
+    document.currentScript ||
+    [...document.scripts].find((script) => /(?:^|\/)app\.js(?:\?|$)/.test(script.src || ""));
+  const candidates = [];
+
+  try {
+    if (currentScript?.src) {
+      candidates.push(new URL(currentScript.src, window.location.href).searchParams.get("v"));
+    }
+  } catch {
+    // Use the meta fallback below when the script URL is not parseable.
+  }
+
+  candidates.push(document.querySelector('meta[name="app-version"]')?.content);
+
+  for (const candidate of candidates) {
+    const version = Number(candidate);
+    if (Number.isFinite(version) && version > 0) return version;
+  }
+
+  return 0;
+}
 
 function createRosterDatabase(table, sourceFileName = "") {
   const rawTable = padRows(trimEmptyEdges(table)).map((row) => row.map((cell) => String(cell || "").trim()));

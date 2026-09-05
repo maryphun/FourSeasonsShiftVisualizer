@@ -8,6 +8,10 @@ export default {
       return handleVision(request, env);
     }
 
+    if (request.method === "GET" && url.pathname === "/api/version") {
+      return handleVersion(request, env);
+    }
+
     if (request.method === "GET" && url.pathname === "/api/health") {
       return jsonResponse({
         ok: true,
@@ -18,6 +22,16 @@ export default {
     return env.ASSETS.fetch(request);
   },
 };
+
+async function handleVersion(request, env) {
+  const indexUrl = new URL("/", request.url);
+  const response = await env.ASSETS.fetch(new Request(indexUrl, { method: "GET" }));
+  const html = await response.text();
+
+  return jsonResponse({
+    version: extractAppVersion(html),
+  });
+}
 
 async function handleVision(request, env) {
   const body = await readJsonBody(request);
@@ -129,11 +143,21 @@ function normalizeVertices(vertices) {
   }));
 }
 
+function extractAppVersion(html) {
+  const text = String(html || "");
+  const metaTag = text.match(/<meta\b[^>]*name=["']app-version["'][^>]*>/i)?.[0] || "";
+  const metaVersion = metaTag.match(/\bcontent=["']([^"']+)["']/i)?.[1];
+  const scriptVersion = text.match(/\bapp\.js\?v=(\d+)\b/i)?.[1];
+  const version = Number(metaVersion || scriptVersion || 0);
+  return Number.isFinite(version) ? version : 0;
+}
+
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
     },
   });
 }

@@ -8,13 +8,14 @@
     />
     <title>Schedule Photo Reader</title>
     <meta name="theme-color" content="#0a1724" />
+    <meta name="app-version" content="2026090501" />
     <link rel="icon" type="image/png" href="assets/app-icon.png" />
     <link rel="apple-touch-icon" href="assets/app-icon.png" />
     <link rel="manifest" href="site.webmanifest" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=2026090501" />
     <script defer src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script defer src="https://unpkg.com/lucide@latest"></script>
-    <script defer src="app.js"></script>
+    <script defer src="app.js?v=2026090501"></script>
   </head>
   <body>
     <div id="app" v-cloak>
@@ -337,8 +338,7 @@
                           v-if="item.slot === 'active' && otherWorkingCount(item.shift)"
                           class="coworker-button"
                           type="button"
-                          @pointerdown.stop
-                          @click.stop="openCoworkerModal(item.shift)"
+                          @click.stop="handleCoworkerButtonClick(item.shift)"
                         >
                           {{ otherWorkingCount(item.shift) }} other persons
                         </button>

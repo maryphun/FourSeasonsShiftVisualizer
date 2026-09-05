@@ -27,12 +27,19 @@ const mimeTypes = new Map([
 
 const server = http.createServer(async (request, response) => {
   try {
-    if (request.method === "POST" && request.url === "/api/vision") {
+    const requestUrl = new URL(request.url || "/", `http://${host}:${port}`);
+
+    if (request.method === "POST" && requestUrl.pathname === "/api/vision") {
       await handleVision(request, response);
       return;
     }
 
-    if (request.method === "GET" && request.url === "/api/health") {
+    if (request.method === "GET" && requestUrl.pathname === "/api/version") {
+      await handleVersion(response);
+      return;
+    }
+
+    if (request.method === "GET" && requestUrl.pathname === "/api/health") {
       sendJson(response, 200, {
         ok: true,
         googleAuth: await describeConfiguredAuth(),
@@ -125,6 +132,13 @@ async function handleVision(request, response) {
     text,
     words: collectWords(annotation),
     auth: auth.kind,
+  });
+}
+
+async function handleVersion(response) {
+  const html = await readFile(path.join(rootDir, "index.html"), "utf8");
+  sendJson(response, 200, {
+    version: extractAppVersion(html),
   });
 }
 
@@ -378,6 +392,15 @@ function firstUsefulValue(...values) {
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function extractAppVersion(html) {
+  const text = String(html || "");
+  const metaTag = text.match(/<meta\b[^>]*name=["']app-version["'][^>]*>/i)?.[0] || "";
+  const metaVersion = metaTag.match(/\bcontent=["']([^"']+)["']/i)?.[1];
+  const scriptVersion = text.match(/\bapp\.js\?v=(\d+)\b/i)?.[1];
+  const version = Number(metaVersion || scriptVersion || 0);
+  return Number.isFinite(version) ? version : 0;
 }
 
 function sendJson(response, status, value) {

@@ -1189,6 +1189,7 @@ img {
   font-size: 0.78rem;
   font-weight: 850;
   box-shadow: none;
+  touch-action: pan-y;
 }
 
 .coworker-count-label {
