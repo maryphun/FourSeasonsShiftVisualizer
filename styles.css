@@ -750,6 +750,33 @@ img {
   gap: 12px;
 }
 
+.schedule-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tool-button.icon-only {
+  width: 40px;
+  padding: 0;
+  gap: 0;
+}
+
+.tool-button.icon-only svg {
+  width: 18px;
+  height: 18px;
+}
+
+.schedule-settings-button.active {
+  border-color: rgba(164, 190, 222, 0.56);
+  color: var(--white);
+  box-shadow:
+    0 8px 15px rgba(0, 0, 0, 0.24),
+    0 0 0 1px rgba(125, 150, 179, 0.16) inset;
+}
+
 .schedule-person {
   min-width: 0;
   display: grid;
@@ -1278,17 +1305,6 @@ img {
   transform: none;
 }
 
-.reminder-day-button.active {
-  border-color: rgba(164, 190, 222, 0.56);
-  background:
-    linear-gradient(180deg, rgba(125, 150, 179, 0.24), rgba(70, 95, 125, 0.14)),
-    rgba(10, 23, 36, 0.28);
-  color: var(--white);
-  box-shadow:
-    0 8px 14px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
 .day-carousel-card {
   position: absolute;
   top: 50%;
@@ -1582,6 +1598,10 @@ img {
   z-index: 60;
 }
 
+.reminder-settings-backdrop {
+  z-index: 60;
+}
+
 .name-editor-modal.shift-editor-modal {
   width: min(420px, calc(100vw - 24px));
   height: min(660px, calc(100svh - 24px));
@@ -1590,7 +1610,20 @@ img {
   max-height: min(660px, calc(100dvh - 24px));
 }
 
+.name-editor-modal.reminder-settings-modal {
+  width: min(420px, calc(100vw - 24px));
+  height: min(560px, calc(100svh - 24px));
+  height: min(560px, calc(100dvh - 24px));
+  max-height: min(560px, calc(100svh - 24px));
+  max-height: min(560px, calc(100dvh - 24px));
+}
+
 .shift-editor-body {
+  gap: 16px;
+  align-content: stretch;
+}
+
+.reminder-settings-body {
   gap: 16px;
   align-content: stretch;
 }
@@ -1650,6 +1683,25 @@ img {
 .shift-mode-toggle svg {
   width: 16px;
   height: 16px;
+}
+
+.reminder-mode-toggle button.active {
+  animation: shift-mode-pop 260ms cubic-bezier(0.16, 1.42, 0.38, 1);
+}
+
+.reminder-time-section {
+  transition:
+    opacity 180ms ease,
+    transform 240ms cubic-bezier(0.16, 1.22, 0.38, 1);
+}
+
+.reminder-time-section.disabled {
+  opacity: 0.42;
+  transform: translateY(4px) scale(0.99);
+}
+
+.reminder-time-section.disabled .reminder-time-picker {
+  pointer-events: none;
 }
 
 .shift-editor-dynamic {
@@ -1739,6 +1791,10 @@ img {
   padding: 12px;
   background: rgba(10, 23, 36, 0.48);
   touch-action: pan-y;
+}
+
+.reminder-time-picker {
+  min-height: 170px;
 }
 
 .shift-wheel-column {
@@ -1838,6 +1894,10 @@ img {
   font-size: 1.1rem;
   overflow-wrap: anywhere;
   text-align: right;
+}
+
+.reminder-settings-preview strong {
+  font-variant-numeric: tabular-nums;
 }
 
 @keyframes shift-mode-pop {
@@ -2382,6 +2442,19 @@ img {
     align-items: center;
   }
 
+  .schedule-actions {
+    gap: 6px;
+  }
+
+  .schedule-actions .tool-button.slim {
+    padding-inline: 12px;
+  }
+
+  .schedule-actions .tool-button.icon-only {
+    width: 40px;
+    padding: 0;
+  }
+
   .schedule-person {
     grid-template-columns: 46px minmax(0, 1fr);
     gap: 10px;
@@ -2437,6 +2510,13 @@ img {
 
   .name-editor-modal {
     width: min(100%, calc(100vw - 16px));
+    max-height: calc(100svh - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+
+  .name-editor-modal.reminder-settings-modal {
+    height: min(560px, calc(100svh - 16px));
+    height: min(560px, calc(100dvh - 16px));
     max-height: calc(100svh - 16px);
     max-height: calc(100dvh - 16px);
   }

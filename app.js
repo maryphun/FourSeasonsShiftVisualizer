@@ -6,6 +6,7 @@ const PROFILE_CACHE_KEY = "schedulePhotoReader.profile.v1";
 const NAME_CACHE_KEY = "schedulePhotoReader.nameAliases.v1";
 const EVENT_CACHE_KEY = "schedulePhotoReader.dateEvents.v1";
 const REMINDER_CLIENT_CACHE_KEY = "schedulePhotoReader.reminderClient.v1";
+const REMINDER_SETTINGS_CACHE_KEY = "schedulePhotoReader.reminderSettings.v1";
 const VERSION_REFRESH_CACHE_KEY = "schedulePhotoReader.versionRefresh.v1";
 const VERSION_CHECK_MIN_INTERVAL_MS = 30000;
 const DAY_TRANSITION_MS = 260;
@@ -21,6 +22,11 @@ const VALID_SHIFT_CONTEXTS = new Set(["TR", "CDT", "CON"]);
 const SHIFT_EDITOR_HOURS = Object.freeze(Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0")));
 const SHIFT_EDITOR_MINUTES = Object.freeze(["00", "30"]);
 const SHIFT_EDITOR_LEAVE_TYPES = Object.freeze(["OFF", "AL", "ROFF", "SAL"]);
+const REMINDER_MINUTES = Object.freeze(Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, "0")));
+const DEFAULT_REMINDER_TIME = Object.freeze({
+  hour: "00",
+  minute: "01",
+});
 const SHIFT_CONTEXT_MAX_LENGTH = 24;
 
 createApp({
@@ -80,6 +86,14 @@ createApp({
       reminderRegistration: null,
       reminderStatusText: "",
       isReminderBusy: false,
+      reminderSettingsHadCache: false,
+      reminderSettingsOpen: false,
+      reminderHour: DEFAULT_REMINDER_TIME.hour,
+      reminderMinute: DEFAULT_REMINDER_TIME.minute,
+      reminderDraftEnabled: false,
+      reminderDraftHour: DEFAULT_REMINDER_TIME.hour,
+      reminderDraftMinute: DEFAULT_REMINDER_TIME.minute,
+      reminderWheelScrollTimer: null,
       showSpreadsheet: false,
       pendingReplace: false,
       readError: false,
@@ -197,6 +211,12 @@ createApp({
     shiftEditorMinutes() {
       return SHIFT_EDITOR_MINUTES;
     },
+    reminderSettingHours() {
+      return SHIFT_EDITOR_HOURS;
+    },
+    reminderSettingMinutes() {
+      return REMINDER_MINUTES;
+    },
     shiftEditorLeaveTypes() {
       return SHIFT_EDITOR_LEAVE_TYPES;
     },
@@ -214,6 +234,18 @@ createApp({
       if (!this.reminderSupported) return "No Alerts";
       if (!this.reminderConfigured) return "Alerts Off";
       return this.reminderEnabled ? "Alerts On" : "Enable Alerts";
+    },
+    reminderTimeLabel() {
+      return formatReminderTime(this.reminderHour, this.reminderMinute);
+    },
+    reminderDraftTimeLabel() {
+      return formatReminderTime(this.reminderDraftHour, this.reminderDraftMinute);
+    },
+    reminderSettingsSummary() {
+      if (this.isReminderBusy) return "Saving...";
+      if (!this.reminderSupported) return "Not supported";
+      if (!this.reminderConfigured) return "Not configured";
+      return this.reminderEnabled ? `On at ${this.reminderTimeLabel}` : "Off";
     },
     canEnableReminders() {
       return this.reminderSupported && this.reminderConfigured && !this.isReminderBusy;
@@ -334,6 +366,7 @@ createApp({
   mounted() {
     this.restoreNameAliases();
     this.restoreDateEvents();
+    this.restoreReminderSettings();
     this.restoreCachedRoster();
     this.checkHealth();
     this.bindVersionWakeChecks();
@@ -350,6 +383,7 @@ createApp({
     window.clearTimeout(this.dayTransitionTimer);
     window.clearTimeout(this.dayFastTravelTimer);
     window.clearTimeout(this.shiftWheelScrollTimer);
+    window.clearTimeout(this.reminderWheelScrollTimer);
     this.unbindVersionWakeChecks();
   },
   methods: {
@@ -432,6 +466,7 @@ createApp({
       this.closeNameEditor();
       this.closeDateEventEditor();
       this.closeShiftEditor();
+      this.closeReminderSettings();
       nextTick(() => this.refreshIcons());
     },
     returnToSchedule() {
@@ -717,6 +752,7 @@ createApp({
       this.closeCoworkerModal();
       this.closeDateEventEditor();
       this.closeShiftEditor();
+      this.closeReminderSettings();
       this.selectedProfileId = "";
       this.selectedShiftIndex = 0;
       removeCache(PROFILE_CACHE_KEY);
@@ -739,6 +775,7 @@ createApp({
       this.eventEditorValue = "";
       this.shiftEditorShift = null;
       this.shiftEditorValue = "";
+      this.reminderSettingsOpen = false;
       removeCache(EVENT_CACHE_KEY);
       this.syncReminderEvents();
       this.statusText = "Upload Photo";
@@ -755,6 +792,29 @@ createApp({
       this.eventEditorShift = null;
       this.shiftEditorShift = null;
       this.shiftEditorValue = "";
+      this.reminderSettingsOpen = false;
+    },
+    restoreReminderSettings() {
+      const settings = normalizeReminderSettings(readCache(REMINDER_SETTINGS_CACHE_KEY));
+      this.reminderSettingsHadCache = Boolean(settings);
+
+      if (!settings) {
+        this.reminderEnabled = false;
+        this.reminderHour = DEFAULT_REMINDER_TIME.hour;
+        this.reminderMinute = DEFAULT_REMINDER_TIME.minute;
+        return;
+      }
+
+      this.reminderEnabled = settings.enabled;
+      this.reminderHour = settings.hour;
+      this.reminderMinute = settings.minute;
+    },
+    persistReminderSettings() {
+      this.reminderSettingsHadCache = true;
+      writeCache(REMINDER_SETTINGS_CACHE_KEY, {
+        enabled: Boolean(this.reminderEnabled),
+        time: this.reminderTimeValue(),
+      });
     },
     restoreDateEvents() {
       const events = readCache(EVENT_CACHE_KEY);
@@ -793,15 +853,25 @@ createApp({
           return;
         }
 
-        const subscription = await registration.pushManager.getSubscription();
-        this.reminderEnabled = Boolean(subscription);
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription && this.reminderEnabled && Notification.permission === "granted") {
+          subscription = await this.ensureReminderSubscription(registration);
+        }
+
+        if (subscription && !this.reminderSettingsHadCache) {
+          this.reminderEnabled = true;
+          this.persistReminderSettings();
+        }
+
         if (subscription) {
           await this.registerReminderSubscription(subscription);
           await this.syncReminderEvents();
         }
 
         this.reminderStatusText = this.reminderEnabled
-          ? "Daily alerts are enabled."
+          ? subscription
+            ? `Daily alerts are set for ${this.reminderTimeLabel}.`
+            : "Open alert settings to finish enabling alerts."
           : "Daily alerts can be enabled for event reminders.";
       } catch (error) {
         console.info("Daily reminder setup skipped", error);
@@ -809,7 +879,94 @@ createApp({
       }
     },
     async enableDailyReminders() {
+      this.reminderDraftEnabled = true;
+      this.reminderDraftHour = this.reminderHour;
+      this.reminderDraftMinute = this.reminderMinute;
+      await this.saveReminderSettings();
+    },
+    openReminderSettings() {
+      this.closeCoworkerModal();
+      this.closeDateEventEditor();
+      this.closeShiftEditor();
+      this.closeNameEditor();
+      this.reminderDraftEnabled = Boolean(this.reminderEnabled);
+      this.reminderDraftHour = this.reminderHour;
+      this.reminderDraftMinute = this.reminderMinute;
+      this.reminderSettingsOpen = true;
+      nextTick(() => {
+        this.refreshIcons();
+        this.syncReminderWheelScroll();
+      });
+    },
+    closeReminderSettings() {
+      this.reminderSettingsOpen = false;
+      window.clearTimeout(this.reminderWheelScrollTimer);
+    },
+    setReminderDraftEnabled(enabled) {
+      this.reminderDraftEnabled = Boolean(enabled);
+      nextTick(() => this.syncReminderWheelScroll());
+    },
+    setReminderTime(part, value, options = {}) {
+      const text = String(value || "").padStart(2, "0");
+      if (part === "hour" && SHIFT_EDITOR_HOURS.includes(text)) {
+        this.reminderDraftHour = text;
+      }
+      if (part === "minute" && REMINDER_MINUTES.includes(text)) {
+        this.reminderDraftMinute = text;
+      }
+      if (!options.fromScroll) nextTick(() => this.syncReminderWheelScroll());
+    },
+    syncReminderWheelScroll() {
+      document.querySelectorAll(".reminder-time-wheel").forEach((container) => {
+        const active = container.querySelector(".active");
+        if (active) this.snapShiftWheelToButton(container, active, { instant: true });
+      });
+    },
+    handleReminderWheelScroll(part, event) {
+      const container = event.currentTarget;
+      if (container.scrollLeft) container.scrollLeft = 0;
+      window.clearTimeout(this.reminderWheelScrollTimer);
+      this.reminderWheelScrollTimer = window.setTimeout(() => {
+        const center = container.getBoundingClientRect().top + container.clientHeight / 2;
+        const buttons = [...container.querySelectorAll("[data-value]")];
+        const closest = buttons.reduce((best, button) => {
+          const rect = button.getBoundingClientRect();
+          const distance = Math.abs(rect.top + rect.height / 2 - center);
+          return !best || distance < best.distance ? { button, distance } : best;
+        }, null);
+        const value = closest?.button?.dataset.value;
+        if (value) {
+          this.setReminderTime(part, value, { fromScroll: true });
+          this.snapShiftWheelToButton(container, closest.button);
+        }
+      }, 48);
+    },
+    reminderTimeValue() {
+      return formatReminderTime(this.reminderHour, this.reminderMinute);
+    },
+    async saveReminderSettings() {
       if (this.isReminderBusy) return;
+
+      const nextHour = normalizeTimePart(this.reminderDraftHour, 23, DEFAULT_REMINDER_TIME.hour);
+      const nextMinute = normalizeTimePart(this.reminderDraftMinute, 59, DEFAULT_REMINDER_TIME.minute);
+      const wantsEnabled = Boolean(this.reminderDraftEnabled);
+      this.reminderHour = nextHour;
+      this.reminderMinute = nextMinute;
+
+      if (!wantsEnabled) {
+        this.reminderEnabled = false;
+        this.persistReminderSettings();
+        this.isReminderBusy = true;
+        try {
+          await this.updateExistingReminderSubscription();
+          await this.syncReminderEvents();
+          this.reminderStatusText = "Daily alerts are off.";
+          this.closeReminderSettings();
+        } finally {
+          this.isReminderBusy = false;
+        }
+        return;
+      }
 
       if (!this.reminderSupported || !this.reminderConfigured) {
         await this.setupDailyReminders();
@@ -821,29 +978,47 @@ createApp({
         const permission = await Notification.requestPermission();
         if (permission !== "granted") {
           this.reminderEnabled = false;
+          this.reminderDraftEnabled = false;
+          this.persistReminderSettings();
           this.reminderStatusText = "Notification permission was not granted.";
           return;
         }
 
         const registration = this.reminderRegistration || (await navigator.serviceWorker.ready);
-        let subscription = await registration.pushManager.getSubscription();
-        if (!subscription) {
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: base64UrlToUint8Array(this.reminderPublicKey),
-          });
-        }
+        const subscription = await this.ensureReminderSubscription(registration);
 
+        this.reminderEnabled = true;
+        this.persistReminderSettings();
         await this.registerReminderSubscription(subscription);
         await this.syncReminderEvents();
         this.reminderRegistration = registration;
-        this.reminderEnabled = true;
-        this.reminderStatusText = "Daily alerts are enabled.";
+        this.reminderStatusText = `Daily alerts are set for ${this.reminderTimeLabel}.`;
+        this.closeReminderSettings();
       } catch (error) {
         console.warn("Could not enable daily reminders", error);
         this.reminderStatusText = error.message || "Could not enable daily alerts.";
       } finally {
         this.isReminderBusy = false;
+      }
+    },
+    async ensureReminderSubscription(registration) {
+      let subscription = await registration.pushManager.getSubscription();
+      if (subscription) return subscription;
+
+      return registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: base64UrlToUint8Array(this.reminderPublicKey),
+      });
+    },
+    async updateExistingReminderSubscription() {
+      if (!this.reminderSupported || !this.reminderConfigured) return;
+
+      try {
+        const registration = this.reminderRegistration || (await navigator.serviceWorker.ready);
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) await this.registerReminderSubscription(subscription);
+      } catch (error) {
+        console.info("Reminder subscription update skipped", error);
       }
     },
     async registerReminderSubscription(subscription) {
@@ -857,6 +1032,8 @@ createApp({
         body: JSON.stringify({
           clientId: this.reminderClientId,
           timezone: clientTimezone(),
+          notificationEnabled: Boolean(this.reminderEnabled),
+          reminderTime: this.reminderTimeValue(),
           subscription: subscription.toJSON(),
         }),
       });
@@ -878,6 +1055,8 @@ createApp({
           body: JSON.stringify({
             clientId: this.reminderClientId,
             timezone: clientTimezone(),
+            notificationEnabled: Boolean(this.reminderEnabled),
+            reminderTime: this.reminderTimeValue(),
             events: this.dateEvents,
           }),
         });
@@ -897,6 +1076,7 @@ createApp({
       this.closeCoworkerModal();
       this.closeNameEditor();
       this.closeShiftEditor();
+      this.closeReminderSettings();
       this.eventEditorShift = shift;
       this.eventEditorValue = this.shiftEventText(shift);
       nextTick(() => {
@@ -914,6 +1094,7 @@ createApp({
       this.closeCoworkerModal();
       this.closeDateEventEditor();
       this.closeNameEditor();
+      this.closeReminderSettings();
       const editorState = shiftValueToEditorState(shift.value);
       this.shiftEditorShift = shift;
       this.shiftEditorValue = String(shift.value || "");
@@ -1886,6 +2067,37 @@ function normalizeEventText(value) {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 80);
+}
+
+function normalizeReminderSettings(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+  const [hour = DEFAULT_REMINDER_TIME.hour, minute = DEFAULT_REMINDER_TIME.minute] = String(
+    value.time || "",
+  ).split(":");
+
+  return {
+    enabled: Boolean(value.enabled),
+    hour: normalizeTimePart(value.hour || hour, 23, DEFAULT_REMINDER_TIME.hour),
+    minute: normalizeTimePart(value.minute || minute, 59, DEFAULT_REMINDER_TIME.minute),
+  };
+}
+
+function normalizeTimePart(value, max, fallback) {
+  const text = String(value ?? "").trim();
+  if (!text) return fallback;
+
+  const number = Number(text);
+  if (!Number.isInteger(number) || number < 0 || number > max) return fallback;
+  return String(number).padStart(2, "0");
+}
+
+function formatReminderTime(hour, minute) {
+  return `${normalizeTimePart(hour, 23, DEFAULT_REMINDER_TIME.hour)}:${normalizeTimePart(
+    minute,
+    59,
+    DEFAULT_REMINDER_TIME.minute,
+  )}`;
 }
 
 function formatDateKey(date) {

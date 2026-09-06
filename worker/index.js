@@ -1,6 +1,7 @@
 const MAX_BODY_BYTES = 14 * 1024 * 1024;
 const DEFAULT_TIMEZONE = "Asia/Tokyo";
 const DEFAULT_VAPID_SUBJECT = "https://shift-visualize-ocr.otopo.workers.dev";
+const DEFAULT_REMINDER_TIME = "00:01";
 const REMINDER_EVENTS_PREFIX = "reminder:events:";
 const REMINDER_SUBSCRIPTION_PREFIX = "reminder:subscription:";
 const REMINDER_SENT_PREFIX = "reminder:sent:";
@@ -46,7 +47,7 @@ export default {
     return env.ASSETS.fetch(request);
   },
   scheduled(event, env, ctx) {
-    ctx.waitUntil(sendDueEventReminders(env));
+    ctx.waitUntil(sendDueEventReminders(env, new Date(event.scheduledTime || Date.now())));
   },
 };
 
@@ -149,6 +150,8 @@ async function handleReminderEvents(request, env) {
   const record = {
     clientId,
     timezone: normalizeTimezone(body.timezone),
+    notificationEnabled: normalizeReminderEnabled(body.notificationEnabled),
+    reminderTime: normalizeReminderTime(body.reminderTime),
     events: normalizeReminderEvents(body.events),
     updatedAt: new Date().toISOString(),
   };
@@ -174,6 +177,8 @@ async function handleReminderSubscribe(request, env) {
   const record = {
     clientId,
     timezone: normalizeTimezone(body.timezone),
+    notificationEnabled: normalizeReminderEnabled(body.notificationEnabled),
+    reminderTime: normalizeReminderTime(body.reminderTime),
     subscription,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -238,14 +243,17 @@ async function sendDueEventReminder(store, vapidKeys, env, key, now) {
       return;
     }
 
-    const timezone = normalizeTimezone(subscriptionRecord.timezone);
-    const due = reminderDueParts(now, timezone);
+    const eventRecord = await store.get(`${REMINDER_EVENTS_PREFIX}${subscriptionRecord.clientId}`, "json");
+    if (subscriptionRecord.notificationEnabled === false || eventRecord?.notificationEnabled === false) return;
+
+    const timezone = normalizeTimezone(subscriptionRecord.timezone || eventRecord?.timezone);
+    const reminderTime = normalizeReminderTime(subscriptionRecord.reminderTime || eventRecord?.reminderTime);
+    const due = reminderDueParts(now, timezone, reminderTime);
     if (!due) return;
 
-    const sentKey = `${REMINDER_SENT_PREFIX}${subscriptionId}:${due.dateKey}`;
+    const sentKey = `${REMINDER_SENT_PREFIX}${subscriptionId}:${due.dateKey}:${due.timeKey}`;
     if (await store.get(sentKey)) return;
 
-    const eventRecord = await store.get(`${REMINDER_EVENTS_PREFIX}${subscriptionRecord.clientId}`, "json");
     const eventText = normalizeReminderText(eventRecord?.events?.[due.dateKey]);
     if (!eventText) return;
 
@@ -320,6 +328,23 @@ function normalizeReminderEvents(value) {
   );
 }
 
+function normalizeReminderEnabled(value) {
+  if (value === false) return false;
+  const text = String(value || "").trim().toLowerCase();
+  return !["false", "0", "off", "no"].includes(text);
+}
+
+function normalizeReminderTime(value) {
+  const text = String(value || DEFAULT_REMINDER_TIME).trim();
+  const match = text.match(/^(\d{1,2}):([0-5]\d)$/);
+  if (!match) return DEFAULT_REMINDER_TIME;
+
+  const hour = Number(match[1]);
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) return DEFAULT_REMINDER_TIME;
+
+  return `${String(hour).padStart(2, "0")}:${match[2]}`;
+}
+
 function normalizeReminderText(value) {
   return String(value || "")
     .replace(/\s+/g, " ")
@@ -341,11 +366,15 @@ function normalizePushSubscription(value) {
   };
 }
 
-function reminderDueParts(date, timezone) {
+function reminderDueParts(date, timezone, reminderTime = DEFAULT_REMINDER_TIME) {
   const parts = datePartsInTimezone(date, timezone);
-  const hour = Number(parts.hour);
-  const minute = Number(parts.minute);
-  if (hour === 0 && minute >= 1 && minute <= 10) return parts;
+  const [targetHour, targetMinute] = normalizeReminderTime(reminderTime).split(":");
+  if (parts.hour === targetHour && parts.minute === targetMinute) {
+    return {
+      ...parts,
+      timeKey: `${targetHour}${targetMinute}`,
+    };
+  }
   return null;
 }
 

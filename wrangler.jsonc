@@ -1,21 +1,34 @@
 {
-  "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "shift-visualize-ocr",
-  "main": "worker/index.js",
-  "compatibility_date": "2026-09-04",
-  "assets": {
-    "directory": "./public",
-    "binding": "ASSETS",
-    "run_worker_first": ["/api/*"],
-    "not_found_handling": "single-page-application"
-  },
-  "observability": {
-    "enabled": true
-  },
-  "triggers": {
-    "crons": ["1 * * * *"]
-  },
-  "secrets": {
-    "required": ["GOOGLE_VISION_API_KEY"]
-  }
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "shift-visualize-ocr",
+	"main": "worker/index.js",
+	"compatibility_date": "2026-09-04",
+	"assets": {
+		"directory": "./public",
+		"binding": "ASSETS",
+		"run_worker_first": [
+			"/api/*"
+		],
+		"not_found_handling": "single-page-application"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"triggers": {
+		"crons": [
+			"* * * * *"
+		]
+	},
+	"secrets": {
+		"required": [
+			"GOOGLE_VISION_API_KEY"
+		]
+	},
+	"kv_namespaces": [
+		{
+			"binding": "REMINDER_STORE",
+			"id": "7ace24357edd4e2098bbff265f9aafd9",
+			"remote": true
+		}
+	]
 }

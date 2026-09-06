@@ -33,7 +33,7 @@ config.kv_namespaces = [
 
 config.triggers = {
   ...(config.triggers || {}),
-  crons: [...new Set([...existingCrons, "1 * * * *"])],
+  crons: [...new Set([...existingCrons.filter((cron) => cron !== "1 * * * *"), "* * * * *"])],
 };
 
 const vapidSubject = String(process.env.VAPID_SUBJECT || "").trim();
