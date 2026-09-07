@@ -1,12 +1,12 @@
 const MAX_BODY_BYTES = 14 * 1024 * 1024;
 const DEFAULT_TIMEZONE = "Asia/Tokyo";
 const DEFAULT_VAPID_SUBJECT = "https://shift-visualize-ocr.otopo.workers.dev";
-const DEFAULT_REMINDER_TIME = "00:01";
-const REMINDER_EVENTS_PREFIX = "reminder:events:";
-const REMINDER_SUBSCRIPTION_PREFIX = "reminder:subscription:";
-const REMINDER_SENT_PREFIX = "reminder:sent:";
+const DEFAULT_REMINDER_TIME = "00:00";
+const REMINDER_SLOT_MINUTES = 15;
+const REMINDER_DUE_GRACE_MS = 20 * 60 * 1000;
+const REMINDER_LOOKAHEAD_LIMIT = 370;
+const REMINDER_QUERY_LIMIT = 100;
 const REMINDER_VAPID_KEY = "reminder:vapid";
-const REMINDER_SENT_TTL_SECONDS = 60 * 60 * 36;
 
 export default {
   async fetch(request, env) {
@@ -40,7 +40,7 @@ export default {
       return jsonResponse({
         ok: true,
         googleAuth: env.GOOGLE_VISION_API_KEY ? "API key" : "not configured",
-        reminders: Boolean(env.REMINDER_STORE),
+        reminders: Boolean(env.REMINDER_DB),
       });
     }
 
@@ -123,49 +123,60 @@ async function handleVision(request, env) {
 }
 
 async function handleReminderConfig(env) {
-  const store = getReminderStore(env);
-  if (!store) {
+  const db = getReminderDb(env);
+  if (!db) {
     return jsonResponse({
       enabled: false,
       publicKey: "",
-      reason: "Daily alerts need the Cloudflare reminder store.",
+      reason: "Daily alerts need the Cloudflare D1 reminder database.",
     });
   }
 
-  const keys = await getOrCreateVapidKeys(store);
+  const keys = await getOrCreateVapidKeys(db);
   return jsonResponse({
     enabled: true,
     publicKey: keys.publicKey,
+    slotMinutes: REMINDER_SLOT_MINUTES,
   });
 }
 
 async function handleReminderEvents(request, env) {
-  const store = getReminderStore(env);
-  if (!store) return reminderStoreMissingResponse();
+  const db = getReminderDb(env);
+  if (!db) return reminderStoreMissingResponse();
 
   const body = await readJsonBody(request);
   const clientId = normalizeClientId(body.clientId);
   if (!clientId) return jsonResponse({ error: "Missing reminder client." }, 400);
 
-  const record = {
-    clientId,
-    timezone: normalizeTimezone(body.timezone),
-    notificationEnabled: normalizeReminderEnabled(body.notificationEnabled),
-    reminderTime: normalizeReminderTime(body.reminderTime),
-    events: normalizeReminderEvents(body.events),
-    updatedAt: new Date().toISOString(),
-  };
+  const events = normalizeReminderEvents(body.events);
+  const updatedAt = new Date().toISOString();
+  const statements = [db.prepare("DELETE FROM reminder_events WHERE client_id = ?").bind(clientId)];
 
-  await store.put(`${REMINDER_EVENTS_PREFIX}${clientId}`, JSON.stringify(record));
+  for (const [dateKey, eventText] of Object.entries(events)) {
+    statements.push(
+      db
+        .prepare(
+          `INSERT INTO reminder_events (client_id, date_key, event_text, updated_at)
+           VALUES (?1, ?2, ?3, ?4)
+           ON CONFLICT(client_id, date_key) DO UPDATE SET
+             event_text = excluded.event_text,
+             updated_at = excluded.updated_at`,
+        )
+        .bind(clientId, dateKey, eventText, updatedAt),
+    );
+  }
+
+  await db.batch(statements);
+  await refreshClientDueReminders(db, clientId, new Date(updatedAt));
   return jsonResponse({
     ok: true,
-    eventCount: Object.keys(record.events).length,
+    eventCount: Object.keys(events).length,
   });
 }
 
 async function handleReminderSubscribe(request, env) {
-  const store = getReminderStore(env);
-  if (!store) return reminderStoreMissingResponse();
+  const db = getReminderDb(env);
+  if (!db) return reminderStoreMissingResponse();
 
   const body = await readJsonBody(request);
   const clientId = normalizeClientId(body.clientId);
@@ -174,38 +185,99 @@ async function handleReminderSubscribe(request, env) {
   if (!subscription) return jsonResponse({ error: "Missing push subscription." }, 400);
 
   const subscriptionId = await hashText(subscription.endpoint);
-  const record = {
+  const timezone = normalizeTimezone(body.timezone);
+  const notificationEnabled = normalizeReminderEnabled(body.notificationEnabled);
+  const reminderTime = normalizeReminderTime(body.reminderTime);
+  const reminderSlot = reminderTimeToSlot(reminderTime);
+  const updatedAt = new Date().toISOString();
+  const nextDue = await nextDueReminderForClient(
+    db,
     clientId,
-    timezone: normalizeTimezone(body.timezone),
-    notificationEnabled: normalizeReminderEnabled(body.notificationEnabled),
-    reminderTime: normalizeReminderTime(body.reminderTime),
-    subscription,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
+    {
+      notificationEnabled,
+      timezone,
+      reminderTime,
+    },
+    new Date(updatedAt),
+  );
 
-  await store.put(`${REMINDER_SUBSCRIPTION_PREFIX}${subscriptionId}`, JSON.stringify(record));
+  await db
+    .prepare(
+      `INSERT INTO reminder_subscriptions (
+         subscription_id,
+         client_id,
+         endpoint,
+         p256dh,
+         auth,
+         expiration_time,
+         timezone,
+         notification_enabled,
+         reminder_time,
+         reminder_slot,
+         next_due_at,
+         next_due_date_key,
+         created_at,
+         updated_at
+       )
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?13)
+       ON CONFLICT(subscription_id) DO UPDATE SET
+         client_id = excluded.client_id,
+         endpoint = excluded.endpoint,
+         p256dh = excluded.p256dh,
+         auth = excluded.auth,
+         expiration_time = excluded.expiration_time,
+         timezone = excluded.timezone,
+         notification_enabled = excluded.notification_enabled,
+         reminder_time = excluded.reminder_time,
+         reminder_slot = excluded.reminder_slot,
+         next_due_at = excluded.next_due_at,
+         next_due_date_key = excluded.next_due_date_key,
+         updated_at = excluded.updated_at`,
+    )
+    .bind(
+      subscriptionId,
+      clientId,
+      subscription.endpoint,
+      subscription.keys.p256dh,
+      subscription.keys.auth,
+      subscription.expirationTime,
+      timezone,
+      notificationEnabled ? 1 : 0,
+      reminderTime,
+      reminderSlot,
+      nextDue?.dueAt || null,
+      nextDue?.dateKey || null,
+      updatedAt,
+    )
+    .run();
+
   return jsonResponse({
     ok: true,
   });
 }
 
 async function handleTodayReminder(request, env) {
-  const store = getReminderStore(env);
-  if (!store) return jsonResponse({ dateKey: "", events: [] });
+  const db = getReminderDb(env);
+  if (!db) return jsonResponse({ dateKey: "", events: [] });
 
   const body = await readJsonBody(request);
   const endpoint = String(body.endpoint || "").trim();
   if (!endpoint) return jsonResponse({ dateKey: "", events: [] });
 
   const subscriptionId = await hashText(endpoint);
-  const subscription = await store.get(`${REMINDER_SUBSCRIPTION_PREFIX}${subscriptionId}`, "json");
-  if (!subscription?.clientId) return jsonResponse({ dateKey: "", events: [] });
+  const subscription = await db
+    .prepare("SELECT client_id, timezone FROM reminder_subscriptions WHERE subscription_id = ?")
+    .bind(subscriptionId)
+    .first();
+  if (!subscription?.client_id) return jsonResponse({ dateKey: "", events: [] });
 
-  const eventRecord = await store.get(`${REMINDER_EVENTS_PREFIX}${subscription.clientId}`, "json");
-  const timezone = normalizeTimezone(subscription.timezone || eventRecord?.timezone);
+  const timezone = normalizeTimezone(subscription.timezone);
   const today = datePartsInTimezone(new Date(), timezone);
-  const eventText = normalizeReminderText(eventRecord?.events?.[today.dateKey]);
+  const event = await db
+    .prepare("SELECT event_text FROM reminder_events WHERE client_id = ? AND date_key = ?")
+    .bind(subscription.client_id, today.dateKey)
+    .first();
+  const eventText = normalizeReminderText(event?.eventText || event?.event_text);
 
   return jsonResponse({
     dateKey: today.dateKey,
@@ -214,63 +286,79 @@ async function handleTodayReminder(request, env) {
 }
 
 async function sendDueEventReminders(env, now = new Date()) {
-  const store = getReminderStore(env);
-  if (!store) return;
+  const db = getReminderDb(env);
+  if (!db) return;
 
-  const vapidKeys = await getOrCreateVapidKeys(store);
-  let cursor;
+  const vapidKeys = await getOrCreateVapidKeys(db);
+  const dueRows = await db
+    .prepare(
+      `SELECT
+         s.subscription_id,
+         s.client_id,
+         s.endpoint,
+         s.p256dh,
+         s.auth,
+         s.expiration_time,
+         s.timezone,
+         s.notification_enabled,
+         s.reminder_time,
+         s.next_due_at,
+         s.next_due_date_key,
+         e.event_text
+       FROM reminder_subscriptions s
+       JOIN reminder_events e
+         ON e.client_id = s.client_id
+        AND e.date_key = s.next_due_date_key
+       WHERE s.notification_enabled = 1
+         AND s.next_due_at IS NOT NULL
+         AND s.next_due_at <= ?1
+         AND s.next_due_at > ?2
+       ORDER BY s.next_due_at ASC
+       LIMIT ?3`,
+    )
+    .bind(now.toISOString(), new Date(now.getTime() - REMINDER_DUE_GRACE_MS).toISOString(), REMINDER_QUERY_LIMIT)
+    .all();
 
-  do {
-    const page = await store.list({
-      prefix: REMINDER_SUBSCRIPTION_PREFIX,
-      cursor,
-      limit: 500,
-    });
-    cursor = page.cursor;
-
-    await Promise.all(
-      page.keys.map((key) => sendDueEventReminder(store, vapidKeys, env, key, now)),
-    );
-  } while (cursor);
+  await Promise.all(
+    (dueRows.results || []).map((row) => sendDueEventReminder(db, vapidKeys, env, row, now)),
+  );
 }
 
-async function sendDueEventReminder(store, vapidKeys, env, key, now) {
+async function sendDueEventReminder(db, vapidKeys, env, row, now) {
   try {
-    const subscriptionId = key.name.slice(REMINDER_SUBSCRIPTION_PREFIX.length);
-    const subscriptionRecord = await store.get(key.name, "json");
-    if (!subscriptionRecord?.subscription?.endpoint || !subscriptionRecord.clientId) {
-      await store.delete(key.name);
+    if (!row?.endpoint || !row.client_id) {
+      if (row?.subscription_id) await deleteReminderSubscription(db, row.subscription_id);
       return;
     }
 
-    const eventRecord = await store.get(`${REMINDER_EVENTS_PREFIX}${subscriptionRecord.clientId}`, "json");
-    if (subscriptionRecord.notificationEnabled === false || eventRecord?.notificationEnabled === false) return;
+    const eventText = normalizeReminderText(row.event_text);
+    if (!eventText) {
+      await updateSubscriptionNextDue(db, row, new Date(now.getTime() + 60000));
+      return;
+    }
 
-    const timezone = normalizeTimezone(subscriptionRecord.timezone || eventRecord?.timezone);
-    const reminderTime = normalizeReminderTime(subscriptionRecord.reminderTime || eventRecord?.reminderTime);
-    const due = reminderDueParts(now, timezone, reminderTime);
-    if (!due) return;
-
-    const sentKey = `${REMINDER_SENT_PREFIX}${subscriptionId}:${due.dateKey}:${due.timeKey}`;
-    if (await store.get(sentKey)) return;
-
-    const eventText = normalizeReminderText(eventRecord?.events?.[due.dateKey]);
-    if (!eventText) return;
-
-    const result = await sendWebPush(subscriptionRecord.subscription, {
-      keys: vapidKeys,
-      subject: env.VAPID_SUBJECT || DEFAULT_VAPID_SUBJECT,
-    });
+    const result = await sendWebPush(
+      {
+        endpoint: row.endpoint,
+        expirationTime: row.expiration_time || null,
+        keys: {
+          p256dh: row.p256dh,
+          auth: row.auth,
+        },
+      },
+      {
+        keys: vapidKeys,
+        subject: env.VAPID_SUBJECT || DEFAULT_VAPID_SUBJECT,
+      },
+    );
 
     if (result.expired) {
-      await store.delete(key.name);
+      await deleteReminderSubscription(db, row.subscription_id);
       return;
     }
 
     if (result.ok) {
-      await store.put(sentKey, new Date().toISOString(), {
-        expirationTtl: REMINDER_SENT_TTL_SECONDS,
-      });
+      await updateSubscriptionNextDue(db, row, new Date(now.getTime() + 60000));
     }
   } catch (error) {
     console.warn("Daily reminder skipped for one subscription", error);
@@ -295,12 +383,12 @@ async function readJsonBody(request) {
   }
 }
 
-function getReminderStore(env) {
-  return env.REMINDER_STORE || null;
+function getReminderDb(env) {
+  return env.REMINDER_DB || null;
 }
 
 function reminderStoreMissingResponse() {
-  return jsonResponse({ error: "Daily alerts need the Cloudflare reminder store." }, 503);
+  return jsonResponse({ error: "Daily alerts need the Cloudflare D1 reminder database." }, 503);
 }
 
 function normalizeClientId(value) {
@@ -329,8 +417,10 @@ function normalizeReminderEvents(value) {
 }
 
 function normalizeReminderEnabled(value) {
-  if (value === false) return false;
-  const text = String(value || "").trim().toLowerCase();
+  if (value === false || value === 0) return false;
+  if (value === true || value === 1) return true;
+  const text = String(value ?? "").trim().toLowerCase();
+  if (!text) return true;
   return !["false", "0", "off", "no"].includes(text);
 }
 
@@ -340,9 +430,11 @@ function normalizeReminderTime(value) {
   if (!match) return DEFAULT_REMINDER_TIME;
 
   const hour = Number(match[1]);
+  const minute = Number(match[2]);
   if (!Number.isInteger(hour) || hour < 0 || hour > 23) return DEFAULT_REMINDER_TIME;
 
-  return `${String(hour).padStart(2, "0")}:${match[2]}`;
+  const rounded = roundReminderTime(hour, minute);
+  return `${rounded.hour}:${rounded.minute}`;
 }
 
 function normalizeReminderText(value) {
@@ -356,26 +448,18 @@ function normalizePushSubscription(value) {
   const endpoint = String(value?.endpoint || "").trim();
   if (!endpoint || !/^https:\/\//i.test(endpoint)) return null;
 
+  const p256dh = String(value.keys?.p256dh || "");
+  const auth = String(value.keys?.auth || "");
+  if (!p256dh || !auth) return null;
+
   return {
     endpoint,
     expirationTime: value.expirationTime || null,
     keys: {
-      p256dh: String(value.keys?.p256dh || ""),
-      auth: String(value.keys?.auth || ""),
+      p256dh,
+      auth,
     },
   };
-}
-
-function reminderDueParts(date, timezone, reminderTime = DEFAULT_REMINDER_TIME) {
-  const parts = datePartsInTimezone(date, timezone);
-  const [targetHour, targetMinute] = normalizeReminderTime(reminderTime).split(":");
-  if (parts.hour === targetHour && parts.minute === targetMinute) {
-    return {
-      ...parts,
-      timeKey: `${targetHour}${targetMinute}`,
-    };
-  }
-  return null;
 }
 
 function datePartsInTimezone(date, timezone) {
@@ -397,8 +481,12 @@ function datePartsInTimezone(date, timezone) {
   };
 }
 
-async function getOrCreateVapidKeys(store) {
-  const existing = await store.get(REMINDER_VAPID_KEY, "json");
+async function getOrCreateVapidKeys(db) {
+  const existingRow = await db
+    .prepare("SELECT value FROM reminder_settings WHERE key = ?")
+    .bind(REMINDER_VAPID_KEY)
+    .first();
+  const existing = parseJson(existingRow?.value);
   if (isValidVapidKeys(existing)) return existing;
 
   const keyPair = await crypto.subtle.generateKey(
@@ -417,8 +505,176 @@ async function getOrCreateVapidKeys(store) {
     createdAt: new Date().toISOString(),
   };
 
-  await store.put(REMINDER_VAPID_KEY, JSON.stringify(keys));
-  return keys;
+  await db
+    .prepare(
+      `INSERT INTO reminder_settings (key, value, updated_at)
+       VALUES (?1, ?2, ?3)
+       ON CONFLICT(key) DO NOTHING`,
+    )
+    .bind(REMINDER_VAPID_KEY, JSON.stringify(keys), keys.createdAt)
+    .run();
+
+  const savedRow = await db
+    .prepare("SELECT value FROM reminder_settings WHERE key = ?")
+    .bind(REMINDER_VAPID_KEY)
+    .first();
+  const saved = parseJson(savedRow?.value);
+  return isValidVapidKeys(saved) ? saved : keys;
+}
+
+async function refreshClientDueReminders(db, clientId, now) {
+  const [eventRows, subscriptionRows] = await Promise.all([
+    reminderEventRows(db, clientId),
+    db
+      .prepare(
+        `SELECT subscription_id, timezone, notification_enabled, reminder_time
+         FROM reminder_subscriptions
+         WHERE client_id = ?`,
+      )
+      .bind(clientId)
+      .all(),
+  ]);
+
+  const updatedAt = now.toISOString();
+  const statements = (subscriptionRows.results || []).map((subscription) => {
+    const nextDue = nextDueReminderFromRows(eventRows, subscription, now);
+    return db
+      .prepare(
+        `UPDATE reminder_subscriptions
+         SET next_due_at = ?1,
+             next_due_date_key = ?2,
+             updated_at = ?3
+         WHERE subscription_id = ?4`,
+      )
+      .bind(nextDue?.dueAt || null, nextDue?.dateKey || null, updatedAt, subscription.subscription_id);
+  });
+
+  if (statements.length) await db.batch(statements);
+}
+
+async function updateSubscriptionNextDue(db, row, after) {
+  const nextDue = await nextDueReminderForClient(
+    db,
+    row.client_id,
+    {
+      notificationEnabled: Number(row.notification_enabled) === 1,
+      timezone: row.timezone,
+      reminderTime: row.reminder_time,
+    },
+    after,
+  );
+
+  await db
+    .prepare(
+      `UPDATE reminder_subscriptions
+       SET next_due_at = ?1,
+           next_due_date_key = ?2,
+           updated_at = ?3
+       WHERE subscription_id = ?4`,
+    )
+    .bind(nextDue?.dueAt || null, nextDue?.dateKey || null, new Date().toISOString(), row.subscription_id)
+    .run();
+}
+
+async function deleteReminderSubscription(db, subscriptionId) {
+  await db.prepare("DELETE FROM reminder_subscriptions WHERE subscription_id = ?").bind(subscriptionId).run();
+}
+
+async function nextDueReminderForClient(db, clientId, options, after) {
+  const eventRows = await reminderEventRows(db, clientId);
+  return nextDueReminderFromRows(eventRows, options, after);
+}
+
+async function reminderEventRows(db, clientId) {
+  const rows = await db
+    .prepare(
+      `SELECT date_key
+       FROM reminder_events
+       WHERE client_id = ?
+       ORDER BY date_key ASC
+       LIMIT ?`,
+    )
+    .bind(clientId, REMINDER_LOOKAHEAD_LIMIT)
+    .all();
+
+  return rows.results || [];
+}
+
+function nextDueReminderFromRows(rows, options, after) {
+  if (!normalizeReminderEnabled(options.notificationEnabled)) return null;
+
+  const timezone = normalizeTimezone(options.timezone);
+  const reminderTime = normalizeReminderTime(options.reminderTime);
+  const afterTime = after instanceof Date ? after : new Date(after);
+
+  for (const row of rows) {
+    const dateKey = String(row.date_key || row.dateKey || "").trim();
+    const dueAt = zonedDateTimeToUtc(dateKey, reminderTime, timezone);
+    if (dueAt && dueAt.getTime() > afterTime.getTime()) {
+      return {
+        dateKey,
+        dueAt: dueAt.toISOString(),
+      };
+    }
+  }
+
+  return null;
+}
+
+function zonedDateTimeToUtc(dateKey, reminderTime, timezone) {
+  const dateMatch = String(dateKey || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const timeMatch = normalizeReminderTime(reminderTime).match(/^(\d{2}):(\d{2})$/);
+  if (!dateMatch || !timeMatch) return null;
+
+  const year = Number(dateMatch[1]);
+  const month = Number(dateMatch[2]);
+  const day = Number(dateMatch[3]);
+  const hour = Number(timeMatch[1]);
+  const minute = Number(timeMatch[2]);
+  if (![year, month, day, hour, minute].every(Number.isFinite)) return null;
+
+  const targetLocalMs = Date.UTC(year, month - 1, day, hour, minute);
+  let utc = new Date(targetLocalMs);
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const parts = datePartsInTimezone(utc, timezone);
+    const [actualYear, actualMonth, actualDay] = parts.dateKey.split("-").map(Number);
+    const actualLocalMs = Date.UTC(
+      actualYear,
+      actualMonth - 1,
+      actualDay,
+      Number(parts.hour),
+      Number(parts.minute),
+    );
+    const diff = targetLocalMs - actualLocalMs;
+    if (Math.abs(diff) < 1000) return utc;
+    utc = new Date(utc.getTime() + diff);
+  }
+
+  return utc;
+}
+
+function reminderTimeToSlot(reminderTime) {
+  return normalizeReminderTime(reminderTime).replace(":", "");
+}
+
+function roundReminderTime(hour, minute) {
+  const totalMinutes = Number(hour) * 60 + Number(minute);
+  const roundedMinutes = Math.round(totalMinutes / REMINDER_SLOT_MINUTES) * REMINDER_SLOT_MINUTES;
+  const normalizedMinutes = ((roundedMinutes % 1440) + 1440) % 1440;
+
+  return {
+    hour: String(Math.floor(normalizedMinutes / 60)).padStart(2, "0"),
+    minute: String(normalizedMinutes % 60).padStart(2, "0"),
+  };
+}
+
+function parseJson(value) {
+  try {
+    return JSON.parse(String(value || ""));
+  } catch {
+    return null;
+  }
 }
 
 function isValidVapidKeys(value) {

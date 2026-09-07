@@ -7,7 +7,8 @@
     "build": "node tools/build-public.mjs",
     "dev": "node server.mjs",
     "dev:cloudflare": "npm run build && wrangler dev",
-    "deploy": "npm run build && node tools/prepare-cloudflare-config.mjs && wrangler deploy --config wrangler.generated.jsonc"
+    "db:migrate:remote": "wrangler d1 migrations apply REMINDER_DB --remote --config wrangler.generated.jsonc",
+    "deploy": "npm run build && node tools/prepare-cloudflare-config.mjs && npm run db:migrate:remote && wrangler deploy --config wrangler.generated.jsonc"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"

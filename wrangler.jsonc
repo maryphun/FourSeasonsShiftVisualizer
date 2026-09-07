@@ -16,7 +16,7 @@
 	},
 	"triggers": {
 		"crons": [
-			"* * * * *"
+			"*/15 * * * *"
 		]
 	},
 	"secrets": {
@@ -24,11 +24,12 @@
 			"GOOGLE_VISION_API_KEY"
 		]
 	},
-	"kv_namespaces": [
+	"d1_databases": [
 		{
-			"binding": "REMINDER_STORE",
-			"id": "7ace24357edd4e2098bbff265f9aafd9",
-			"remote": true
+			"binding": "REMINDER_DB",
+			"database_name": "schedule-photo-reader-reminders",
+			"database_id": "02afa78e-d7ec-425d-85c0-eb5509dac5b4",
+			"migrations_dir": "./migrations"
 		}
 	]
 }

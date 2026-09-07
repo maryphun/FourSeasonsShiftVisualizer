@@ -83,16 +83,18 @@ Set your Google Vision key as a Cloudflare secret:
 npx.cmd wrangler secret put GOOGLE_VISION_API_KEY
 ```
 
-Create the KV namespace used for daily event alerts:
+Create the D1 database used for daily event alerts:
 
 ```powershell
-npx.cmd wrangler kv namespace create REMINDER_STORE
+npx.cmd wrangler d1 create schedule-photo-reader-reminders
 ```
 
-Copy the `id` from Wrangler's output, then set it before local deploy:
+Copy the `database_id` from Wrangler's output into the `REMINDER_DB` binding in
+`wrangler.jsonc`. `npm.cmd run deploy` applies D1 migrations automatically; to run
+the migration by itself:
 
 ```powershell
-$env:REMINDER_STORE_KV_ID="YOUR_KV_NAMESPACE_ID"
+npx.cmd wrangler d1 migrations apply REMINDER_DB --remote
 ```
 
 Deploy:
@@ -103,8 +105,9 @@ npm.cmd run deploy
 
 Cloudflare will give you a free `*.workers.dev` URL after deployment.
 
-Daily event alerts use a Worker cron trigger at minute `1` every hour. The Worker checks
-each phone's timezone and only sends when that user's local time is just after `00:01`.
+Daily event alerts use a Worker cron trigger every 15 minutes. The Worker stores each
+phone's next due reminder in D1 and sends only when that user's local notification time
+is due. Cached reminder times are rounded to the nearest 15 minutes.
 On iPhone, install the site to the Home Screen first, then enable alerts from the app.
 
 ## Automatic deploy from GitHub
@@ -118,7 +121,6 @@ Before the first automatic deploy, add these repository secrets in GitHub:
 CLOUDFLARE_ACCOUNT_ID
 CLOUDFLARE_API_TOKEN
 GOOGLE_VISION_API_KEY
-REMINDER_STORE_KV_ID
 ```
 
 In GitHub, open the repository, then go to:

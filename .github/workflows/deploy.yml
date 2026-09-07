@@ -31,11 +31,9 @@ jobs:
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || (echo "Missing GitHub secret: CLOUDFLARE_API_TOKEN" && exit 1)
           test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Missing GitHub secret: CLOUDFLARE_ACCOUNT_ID" && exit 1)
-          test -n "$REMINDER_STORE_KV_ID" || (echo "Missing GitHub secret: REMINDER_STORE_KV_ID" && exit 1)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          REMINDER_STORE_KV_ID: ${{ secrets.REMINDER_STORE_KV_ID }}
 
       - name: Install dependencies
         run: npm ci
@@ -45,10 +43,10 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           GOOGLE_VISION_API_KEY: ${{ secrets.GOOGLE_VISION_API_KEY }}
-          REMINDER_STORE_KV_ID: ${{ secrets.REMINDER_STORE_KV_ID }}
         run: |
+          trap 'rm -f .production.secrets' EXIT
           printf 'GOOGLE_VISION_API_KEY=%s\n' "$GOOGLE_VISION_API_KEY" > .production.secrets
           npm run build
           node tools/prepare-cloudflare-config.mjs
+          npx wrangler d1 migrations apply REMINDER_DB --remote --config wrangler.generated.jsonc
           npx wrangler deploy --config wrangler.generated.jsonc --secrets-file .production.secrets
-          rm -f .production.secrets

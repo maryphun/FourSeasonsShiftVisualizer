@@ -22,10 +22,10 @@ const VALID_SHIFT_CONTEXTS = new Set(["TR", "CDT", "CON"]);
 const SHIFT_EDITOR_HOURS = Object.freeze(Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0")));
 const SHIFT_EDITOR_MINUTES = Object.freeze(["00", "30"]);
 const SHIFT_EDITOR_LEAVE_TYPES = Object.freeze(["OFF", "AL", "ROFF", "SAL"]);
-const REMINDER_MINUTES = Object.freeze(Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, "0")));
+const REMINDER_MINUTES = Object.freeze(["00", "15", "30", "45"]);
 const DEFAULT_REMINDER_TIME = Object.freeze({
   hour: "00",
-  minute: "01",
+  minute: "00",
 });
 const SHIFT_CONTEXT_MAX_LENGTH = 24;
 
@@ -808,6 +808,7 @@ createApp({
       this.reminderEnabled = settings.enabled;
       this.reminderHour = settings.hour;
       this.reminderMinute = settings.minute;
+      this.persistReminderSettings();
     },
     persistReminderSettings() {
       this.reminderSettingsHadCache = true;
@@ -947,8 +948,12 @@ createApp({
     async saveReminderSettings() {
       if (this.isReminderBusy) return;
 
-      const nextHour = normalizeTimePart(this.reminderDraftHour, 23, DEFAULT_REMINDER_TIME.hour);
-      const nextMinute = normalizeTimePart(this.reminderDraftMinute, 59, DEFAULT_REMINDER_TIME.minute);
+      const roundedReminder = roundReminderTime(
+        normalizeTimePart(this.reminderDraftHour, 23, DEFAULT_REMINDER_TIME.hour),
+        normalizeTimePart(this.reminderDraftMinute, 59, DEFAULT_REMINDER_TIME.minute),
+      );
+      const nextHour = roundedReminder.hour;
+      const nextMinute = roundedReminder.minute;
       const wantsEnabled = Boolean(this.reminderDraftEnabled);
       this.reminderHour = nextHour;
       this.reminderMinute = nextMinute;
@@ -2075,11 +2080,15 @@ function normalizeReminderSettings(value) {
   const [hour = DEFAULT_REMINDER_TIME.hour, minute = DEFAULT_REMINDER_TIME.minute] = String(
     value.time || "",
   ).split(":");
+  const rounded = roundReminderTime(
+    normalizeTimePart(value.hour || hour, 23, DEFAULT_REMINDER_TIME.hour),
+    normalizeTimePart(value.minute || minute, 59, DEFAULT_REMINDER_TIME.minute),
+  );
 
   return {
     enabled: Boolean(value.enabled),
-    hour: normalizeTimePart(value.hour || hour, 23, DEFAULT_REMINDER_TIME.hour),
-    minute: normalizeTimePart(value.minute || minute, 59, DEFAULT_REMINDER_TIME.minute),
+    hour: rounded.hour,
+    minute: rounded.minute,
   };
 }
 
@@ -2093,11 +2102,22 @@ function normalizeTimePart(value, max, fallback) {
 }
 
 function formatReminderTime(hour, minute) {
-  return `${normalizeTimePart(hour, 23, DEFAULT_REMINDER_TIME.hour)}:${normalizeTimePart(
-    minute,
-    59,
-    DEFAULT_REMINDER_TIME.minute,
-  )}`;
+  const rounded = roundReminderTime(
+    normalizeTimePart(hour, 23, DEFAULT_REMINDER_TIME.hour),
+    normalizeTimePart(minute, 59, DEFAULT_REMINDER_TIME.minute),
+  );
+  return `${rounded.hour}:${rounded.minute}`;
+}
+
+function roundReminderTime(hour, minute) {
+  const totalMinutes = Number(hour) * 60 + Number(minute);
+  const roundedMinutes = Math.round(totalMinutes / 15) * 15;
+  const normalizedMinutes = ((roundedMinutes % 1440) + 1440) % 1440;
+
+  return {
+    hour: String(Math.floor(normalizedMinutes / 60)).padStart(2, "0"),
+    minute: String(normalizedMinutes % 60).padStart(2, "0"),
+  };
 }
 
 function formatDateKey(date) {

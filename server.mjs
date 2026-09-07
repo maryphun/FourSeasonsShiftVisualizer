@@ -153,7 +153,7 @@ async function handleReminderStub(request, response, pathname) {
     sendJson(response, 200, {
       enabled: false,
       publicKey: "",
-      reason: "Daily alerts need the Cloudflare reminder store.",
+      reason: "Daily alerts need the Cloudflare D1 reminder database.",
     });
     return;
   }
