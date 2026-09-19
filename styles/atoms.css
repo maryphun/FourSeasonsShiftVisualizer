@@ -1,0 +1,34 @@
+@layer components {
+  .primary-button, .tool-button, .icon-button, .add-event-button, .ui-action {
+    min-height: 42px;
+    border: 1px solid var(--color-edge);
+    border-radius: 8px;
+    background: var(--color-surface);
+    color: var(--color-ink);
+    box-shadow: none;
+    font-size: .8125rem;
+    font-weight: 650;
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 220ms var(--ease-spring);
+  }
+  .primary-button { background: var(--color-accent); border-color: transparent; color: #fff; font-size: .875rem; }
+  .primary-button:hover:not(:disabled) { background: #623040; border-color: transparent; box-shadow: none; }
+  .tool-button:hover:not(:disabled), .icon-button:hover:not(:disabled), .add-event-button:hover:not(:disabled), .ui-action:hover:not(:disabled) {
+    background: var(--color-raised); border-color: var(--color-edge); box-shadow: none; color: var(--color-ink);
+  }
+  .primary-button:active:not(:disabled), .tool-button:active:not(:disabled), .icon-button:active:not(:disabled),
+  .add-event-button:active:not(:disabled), .ui-action:active:not(:disabled) { transform: scale(.96); }
+  .primary-button svg, .tool-button svg, .add-event-button svg, .ui-action svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .icon-button { display: grid; place-items: center; width: 40px; height: 40px; min-height: 40px; border-color: transparent; background: transparent; color: var(--color-quiet); }
+  .name-edit-button, .name-edit-button.small { width: 32px; height: 36px; border-radius: 6px; color: var(--color-quiet); }
+  .name-edit-button:hover { background: var(--color-raised); color: var(--color-accent); }
+  .name-edit-button svg { width: 15px; height: 15px; }
+  .avatar, .schedule-person .avatar.large {
+    background: var(--color-accent-soft); color: var(--color-accent); border: 0; border-radius: 8px; font-weight: 700; box-shadow: none;
+  }
+  .name-editor-field input, .credential-row input, .shift-leave-field select {
+    background: var(--color-canvas); color: var(--color-ink); border: 1px solid var(--color-edge);
+    border-radius: 6px; font-size: 1rem; font-weight: 500; transition: border-color 160ms ease;
+  }
+  .name-editor-field input:focus, .credential-row input:focus, .shift-leave-field select:focus { background: var(--color-surface); border-color: var(--color-accent); box-shadow: none; }
+  .name-editor-field input::placeholder, .credential-row input::placeholder { color: var(--color-quiet); }
+}

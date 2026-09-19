@@ -1,0 +1,146 @@
+@layer components {
+  .schedule-hero { padding: 0 0 14px; border-bottom: 1px solid var(--color-edge); }
+  .schedule-topbar { gap: 8px; }
+  .schedule-person { grid-template-columns: 42px minmax(0, 1fr); gap: 10px; }
+  .schedule-person .avatar.large { width: 42px; height: 42px; }
+  .schedule-person strong { font-size: 1.0625rem; font-weight: 700; line-height: 1.35; }
+  .schedule-actions { gap: 2px; }
+  .schedule-actions .tool-button { border-color: transparent; background: transparent; }
+  .schedule-actions .tool-button.slim { padding-inline: 10px; }
+  .schedule-actions .tool-button.icon-only { padding: 0; }
+  .schedule-settings-button.active { color: var(--color-accent); box-shadow: none; }
+  .schedule-settings-button svg { transition: transform 280ms var(--ease-settle); }
+  .schedule-settings-button:hover svg { transform: rotate(35deg); }
+
+  .day-card-section { min-height: 0; grid-template-rows: auto minmax(260px, 1fr) auto auto; gap: 12px; padding: 12px 0 0; }
+  .day-section-header { justify-content: space-between; padding: 0; }
+  .day-section-header small { font-size: .6875rem; font-weight: 550; color: var(--color-quiet); }
+  .month-label { min-width: 106px; font-size: .9375rem; color: var(--color-ink); }
+  .month-arrow { width: 36px; min-height: 36px; background: transparent; border-color: transparent; }
+  .month-arrow:disabled { opacity: .3; }
+  .daily-focus { display: grid; grid-template-rows: minmax(212px, 1fr) 40px; gap: 8px; min-width: 0; min-height: 0; }
+  .day-carousel { display: block; position: relative; min-height: 0; }
+  .day-arrow { position: absolute; z-index: 5; inset: 0 auto 0 -5px; width: 30px; height: 100%; color: var(--color-quiet); background: transparent; }
+  .day-arrow:last-child { right: -5px; left: auto; }
+  .day-arrow svg { width: 22px; height: 22px; }
+  .day-arrow:hover { color: var(--color-accent); }
+  .day-carousel-viewport { height: 100%; min-height: 212px; mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent); }
+  .day-shift-card {
+    --shift-accent: var(--color-work);
+    width: min(calc(100% - 56px), 328px); max-width: 328px;
+    height: min(calc(100% - 12px), 256px); min-height: 200px;
+    padding: 18px; gap: 8px; border: 1px solid #c8d7d0; border-radius: 8px;
+    background: var(--color-surface); box-shadow: none;
+    grid-template-rows: 24px minmax(0, 1fr) 56px;
+  }
+  .day-shift-card.is-off { --shift-accent: var(--color-leave); background: #fff9fa; border-color: #e2cdd4; box-shadow: none; }
+  .day-shift-card.is-late { --shift-accent: var(--color-late); background: #f9faff; border-color: #cdd4e2; }
+  .day-shift-card.is-today { border-color: var(--shift-accent); }
+  .day-shift-panda { top: 12px; right: 14px; width: 42px; height: 56px; }
+  .day-shift-card.has-shift-art .day-card-topline { padding-right: 48px; }
+  .day-card-topline span, .day-card-topline small,
+  .day-shift-card.is-off .day-card-topline span, .day-shift-card.is-off .day-card-topline small {
+    color: var(--shift-accent); font-size: .625rem; line-height: 1.5; font-weight: 700;
+  }
+  .day-card-main { gap: 16px; }
+  .day-card-main time, .day-shift-card.is-off .day-card-main time {
+    width: 66px; height: 76px; flex-basis: 66px; border-radius: 0;
+    background: transparent; border-right: 1px solid var(--color-edge); padding-right: 16px;
+  }
+  .day-card-main time strong { color: var(--shift-accent); font-size: 2rem; line-height: 1; font-weight: 600; }
+  .day-card-main time span, .day-shift-card.is-off .day-card-main time span { color: var(--shift-accent); font-size: .8125rem; font-weight: 500; }
+  .day-shift-display > strong, .day-shift-display.has-context > strong, .day-shift-card.is-off .day-shift-display > strong {
+    color: var(--color-ink); font-size: 2.625rem; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums;
+  }
+  .day-shift-display.is-long > strong { font-size: 1.375rem; line-height: 1.3; }
+  .day-shift-display small, .day-shift-card.is-off .day-shift-display small { color: var(--shift-accent); font-size: .8125rem; font-weight: 600; line-height: 1.4; }
+  .day-card-action { min-height: 56px; grid-template-rows: 20px 32px; gap: 4px; }
+  .day-event-note, .day-shift-card.is-off .day-event-note { color: var(--shift-accent); font-size: .75rem; font-weight: 600; }
+  .day-card-coworkers { min-height: 32px; width: 100%; }
+  .coworker-button, .coworker-count-label,
+  .day-shift-card.is-off .coworker-button, .day-shift-card.is-off .coworker-count-label {
+    display: flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 8px; border-radius: 4px;
+    color: var(--shift-accent); background: transparent; font-size: .6875rem; font-weight: 600; line-height: 1;
+  }
+  .coworker-button svg, .coworker-count-label svg { width: 14px; height: 14px; }
+  .coworker-button:hover, .day-shift-card.is-off .coworker-button:hover { background: var(--color-raised); color: var(--color-ink); }
+  .day-event-tools { display: grid; grid-template-columns: minmax(0, 1.25fr) repeat(2, minmax(0, 1fr)); gap: 4px; padding: 0; }
+  .add-event-button { width: 100%; min-height: 40px; gap: 6px; padding: 0 6px; border-color: transparent; background: transparent; color: var(--color-quiet); font-size: .75rem; }
+  .add-event-button:first-child { background: var(--color-accent-soft); color: var(--color-accent); }
+
+  .month-calendar { display: grid; grid-template-rows: 18px auto; gap: 8px; min-width: 0; }
+  .calendar-weekdays { text-align: center; color: var(--color-quiet); font-size: .6875rem; line-height: 18px; }
+  .day-pills { padding: 0; grid-template-rows: repeat(var(--calendar-weeks), 36px); gap: 4px; }
+  .day-pill {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-width: 0; width: 100%; height: 100%; padding: 0; border: 1px solid transparent;
+    border-radius: 6px; background: transparent; color: var(--color-ink); box-shadow: none;
+    font-size: .8125rem; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums;
+    transition: background-color 160ms ease, color 160ms ease, transform 180ms var(--ease-spring), border-color 160ms ease;
+  }
+  .day-pill.leave { border-color: transparent; background: var(--color-leave-soft); color: var(--color-leave); }
+  .day-pill.is-late { color: var(--color-late); }
+  .day-pill.today { border-color: var(--color-accent); }
+  .day-pill:hover:not(.active) { background: var(--color-raised); transform: translateY(-1px); }
+  .day-pill:active { transform: scale(.94); }
+  .day-pill.active, .day-pill.leave.active { background: var(--color-accent); border-color: transparent; color: #fff; box-shadow: none; }
+  .day-pill.is-unplanned:not(.active) { color: var(--color-quiet); }
+  .calendar-shift-time { display: none; }
+  .calendar-event-mark { position: absolute; bottom: 3px; width: 3px; height: 3px; border-radius: 50%; background: currentColor; }
+  .summary-strip.monthly-summary { margin: 0; padding: 12px 0 0; border-top: 1px solid var(--color-edge); gap: 10px 0; }
+  .summary-strip .summary-item { min-height: 32px; display: flex; flex-direction: column-reverse; justify-content: center; align-items: flex-start; gap: 4px; padding: 0 12px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+  .summary-item:nth-child(3n + 2), .summary-item:nth-child(3n + 3) { border-left: 1px solid var(--color-edge); }
+  .summary-item dt { color: var(--color-quiet); font-size: .625rem; font-weight: 550; line-height: 1.2; }
+  .summary-item dd { margin: 0; font-size: 1.125rem; font-weight: 650; line-height: 1.2; }
+  .summary-item.stat-leave dd { color: var(--color-leave); }
+  .summary-item.stat-work dd { color: var(--color-work); }
+  .summary-item.stat-late dd { color: var(--color-late); }
+
+  @media (min-width: 960px) {
+    .schedule-hero { padding-bottom: 22px; }
+    .schedule-person strong { font-size: 1.25rem; }
+    .day-card-section { grid-template-columns: minmax(0, .95fr) minmax(0, 1.15fr); grid-template-rows: 44px minmax(360px, 1fr) auto; gap: 20px 48px; padding-top: 24px; }
+    .day-section-header { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; }
+    .day-section-header .month-navigation { grid-column: 2; grid-row: 1; justify-content: space-between; }
+    .day-section-header small { grid-column: 1; grid-row: 1; padding-inline: 24px; }
+    .month-label { font-size: 1.125rem; }
+    .month-arrow { width: 40px; min-height: 40px; }
+    .daily-focus { grid-template-rows: minmax(300px, 1fr) 44px; gap: 18px; }
+    .day-shift-card { width: min(calc(100% - 64px), 360px); max-width: 360px; min-height: 288px; height: min(calc(100% - 32px), 350px); padding: 26px; grid-template-rows: 28px minmax(0, 1fr) 64px; }
+    .day-shift-panda { top: 20px; right: 22px; width: 54px; height: 70px; }
+    .day-shift-card.has-shift-art .day-card-topline { padding-right: 62px; }
+    .day-card-topline span, .day-card-topline small, .day-shift-card.is-off .day-card-topline span, .day-shift-card.is-off .day-card-topline small { font-size: .6875rem; }
+    .day-card-main time, .day-shift-card.is-off .day-card-main time { width: 80px; height: 92px; flex-basis: 80px; }
+    .day-card-main time strong { font-size: 2.625rem; }
+    .day-shift-display > strong, .day-shift-display.has-context > strong, .day-shift-card.is-off .day-shift-display > strong { font-size: 3.125rem; }
+    .day-shift-display.is-long > strong { font-size: 1.625rem; }
+    .coworker-button, .coworker-count-label, .day-shift-card.is-off .coworker-button, .day-shift-card.is-off .coworker-count-label { font-size: .75rem; }
+    .add-event-button { min-height: 44px; font-size: .8125rem; }
+    .month-calendar { grid-template-rows: 24px minmax(0, 1fr); gap: 12px; }
+    .calendar-weekdays { font-size: .75rem; line-height: 24px; }
+    .day-pills { grid-template-rows: repeat(var(--calendar-weeks), minmax(46px, 1fr)); gap: 6px; }
+    .day-pill { align-items: flex-start; justify-content: center; padding: 10px 12px; gap: 9px; background: var(--color-surface); font-size: .9375rem; }
+    .calendar-shift-time { display: block; font-size: .6875rem; font-weight: 500; }
+    .calendar-event-mark { top: 9px; right: 8px; bottom: auto; width: 4px; height: 4px; }
+    .summary-strip.monthly-summary { grid-column: 1 / -1; grid-template-columns: repeat(6, 1fr); padding-top: 24px; gap: 0; }
+    .summary-strip .summary-item { padding-inline: 24px; min-height: 50px; gap: 8px; }
+    .summary-strip .summary-item + .summary-item { border-left: 1px solid var(--color-edge); }
+    .summary-item dd { font-size: 1.5rem; }
+    .summary-item dt { font-size: .75rem; }
+  }
+  @media (max-width: 380px) {
+    .schedule-person { grid-template-columns: 34px minmax(0, 1fr); gap: 6px; }
+    .schedule-person .avatar.large { width: 34px; height: 36px; }
+    .schedule-person strong { font-size: .9375rem; }
+    .schedule-actions .tool-button.slim { padding-inline: 5px; }
+    .name-line { gap: 0; }
+    .day-shift-card { padding: 14px; width: calc(100% - 48px); }
+    .day-card-main { gap: 10px; }
+    .day-card-main time, .day-shift-card.is-off .day-card-main time { flex-basis: 52px; width: 52px; padding-right: 10px; }
+    .day-shift-display > strong, .day-shift-display.has-context > strong, .day-shift-card.is-off .day-shift-display > strong { font-size: 2.375rem; }
+    .day-shift-display.is-long > strong { font-size: 1.125rem; }
+    .day-shift-panda { width: 34px; height: 44px; }
+    .add-event-button { font-size: .6875rem; gap: 4px; }
+    .add-event-button svg { width: 16px; height: 16px; }
+  }
+}

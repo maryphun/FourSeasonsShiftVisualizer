@@ -125,6 +125,23 @@ phone's next due reminder in D1 and sends only when that user's local notificati
 is due. Cached reminder times are rounded to the nearest 15 minutes.
 On iPhone, install the site to the Home Screen first, then enable alerts from the app.
 
+## Frontend Structure
+
+The dashboard uses the existing Vue runtime and Tailwind v4 CLI. Run `npm run
+build:css` after CSS/component edits, or `npm run watch:css` while developing.
+
+- Atoms: `UiIcon`, `UiAction`, and the date badge in `ui-components.js`.
+- Molecules: shift reading and month navigation.
+- Organisms: shift cards, the keyboard-accessible calendar, and monthly totals.
+- Page template and data orchestration: `index.html` and `app.js`.
+- Shared tokens and styles: `styles/tokens.css`, `atoms.css`, `schedule.css`,
+  `surfaces.css`, and `motion.css`, compiled through `styles/app.css`.
+
+Business data stays in the parent app; presentation components receive props and
+emit actions. Modal focus is contained and returns to its trigger. The page stays
+fixed to the viewport, with contained scrolling available on smaller screens.
+Manrope is self-hosted with its license in `assets/Manrope-OFL.txt`.
+
 ## Automatic deploy from GitHub
 
 The project includes a GitHub Actions workflow at `.github/workflows/deploy.yml`.

@@ -7,7 +7,7 @@
       content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
     />
     <title>Schedule Photo Reader</title>
-    <meta name="theme-color" content="#101113" />
+    <meta name="theme-color" content="#f4f5f7" />
     <meta name="app-version" content="2026090701" />
     <link rel="icon" type="image/png" href="assets/app-icon.png" />
     <link rel="apple-touch-icon" href="assets/app-icon.png" />
@@ -16,6 +16,7 @@
     <script defer src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script defer src="https://unpkg.com/lucide@latest"></script>
     <script defer src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script defer src="ui-components.js?v=2026090701"></script>
     <script defer src="app.js?v=2026090701"></script>
   </head>
   <body>
@@ -73,7 +74,6 @@
             </button>
 
             <div class="editor-title">
-              <span>CSV Preview</span>
               <strong>Manually Edit Data</strong>
             </div>
 
@@ -170,7 +170,7 @@
               />
             </div>
             <div class="progress-track" aria-hidden="true">
-              <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
+              <div class="progress-fill" :style="{ transform: `scaleX(${progress / 100})` }"></div>
             </div>
           </div>
 
@@ -288,20 +288,12 @@
 
             <div v-if="activeShift" class="day-card-section">
               <div class="day-section-header">
-                <nav class="month-navigation flex min-w-0 items-center gap-2" aria-label="Calendar month">
-                  <button class="month-arrow" type="button" title="Previous month" aria-label="Previous month"
-                    :disabled="calendarMonthOffset === 0" @click="changeCalendarMonth(-1)">
-                    <i data-lucide="chevron-left"></i>
-                  </button>
-                  <span class="month-label text-center font-semibold tabular-nums" aria-live="polite">{{ calendarMonthLabel }}</span>
-                  <button class="month-arrow" type="button" title="Next month" aria-label="Next month"
-                    :disabled="calendarMonthOffset >= maxCalendarMonthOffset" @click="changeCalendarMonth(1)">
-                    <i data-lucide="chevron-right"></i>
-                  </button>
-                </nav>
+                <month-navigation :label="calendarMonthLabel" :at-start="calendarMonthOffset === 0"
+                  :at-end="calendarMonthOffset >= maxCalendarMonthOffset" @change="changeCalendarMonth"></month-navigation>
                 <small class="tabular-nums">{{ selectedShiftIndex + 1 }} / {{ calendarShifts.length }}</small>
               </div>
 
+              <div class="daily-focus">
               <Transition name="month" mode="out-in" @after-enter="refreshIcons">
               <div
                 :key="calendarMonthOffset"
@@ -327,71 +319,14 @@
                   :class="dayStageClass"
                   :style="dayStageStyle"
                 >
-                  <article
-                    v-for="item in dayCarouselItems"
+                  <shift-card v-for="item in dayCarouselItems"
                     :key="`${item.slot}-${item.shift.dateKey || item.shift.dateLabel}`"
-                    class="day-shift-card day-carousel-card"
-                    :class="[shiftClass(item.shift), `is-${item.slot}`]"
-                    :aria-hidden="item.slot !== 'active'"
-                    @click="handleDayCardClick(item.slot)"
-                  >
-                    <img
-                      v-if="shiftPandaSrc(item.shift.value)"
-                      class="day-shift-panda"
-                      :src="shiftPandaSrc(item.shift.value)"
-                      alt=""
-                      aria-hidden="true"
-                      draggable="false"
-                    />
-
-                    <div class="day-card-topline">
-                      <span>{{ shiftRelativeLabel(item.shift) }}</span>
-                      <small>{{ item.shift.dateLabel }}</small>
-                    </div>
-
-                    <div class="day-card-main">
-                      <time>
-                        <strong>{{ item.shift.day }}</strong>
-                        <span>{{ japaneseWeekdayLabel(item.shift.weekday) }}</span>
-                      </time>
-                      <div
-                        class="day-shift-display"
-                        :class="{ 'has-context': displayShiftContext(item.shift.value), 'is-long': displayShiftMain(item.shift.value).length > 5 }"
-                      >
-                        <strong>{{ displayShiftMain(item.shift.value) }}</strong>
-                        <small v-if="displayShiftContext(item.shift.value)">
-                          {{ displayShiftContext(item.shift.value) }}
-                        </small>
-                      </div>
-                    </div>
-
-                    <div class="day-card-action">
-                      <p
-                        class="day-event-note"
-                        :class="{ 'is-empty': !shiftEventText(item.shift) }"
-                        :aria-hidden="!shiftEventText(item.shift)"
-                        :title="shiftEventText(item.shift)"
-                      >
-                        {{ shiftEventText(item.shift) || "No event" }}
-                      </p>
-                      <div class="day-card-coworkers">
-                        <button
-                          v-if="item.slot === 'active' && otherWorkingCount(item.shift)"
-                          class="coworker-button"
-                          type="button"
-                          @click.stop="handleCoworkerButtonClick(item.shift)"
-                        >
-                          {{ otherWorkingCount(item.shift) }} other persons
-                        </button>
-                        <span
-                          v-else-if="otherWorkingCount(item.shift)"
-                          class="coworker-count-label"
-                        >
-                          {{ otherWorkingCount(item.shift) }} other persons
-                        </span>
-                      </div>
-                    </div>
-                  </article>
+                    :shift="item.shift" :slot-name="item.slot" :appearance="shiftClass(item.shift)"
+                    :panda="shiftPandaSrc(item.shift.value)" :relative="shiftRelativeLabel(item.shift)"
+                    :main="displayShiftMain(item.shift.value)" :context="displayShiftContext(item.shift.value)"
+                    :weekday="japaneseWeekdayLabel(item.shift.weekday)" :event-text="shiftEventText(item.shift)"
+                    :coworkers="otherWorkingCount(item.shift)"
+                    @navigate="handleDayCardClick" @coworkers="handleCoworkerButtonClick"></shift-card>
                 </div>
 
                 <button
@@ -432,54 +367,11 @@
                 </button>
               </div>
 
-              <div class="day-pills grid grid-cols-7 gap-1.5" :key="`calendar-${calendarMonthOffset}`" aria-label="Month days">
-                <button
-                  v-for="(shift, shiftIndex) in calendarShifts"
-                  :key="`pill-${shift.dateKey || shift.dateLabel}`"
-                  class="day-pill"
-                  :class="{
-                    active: shiftIndex === selectedShiftIndex,
-                    today: shift.dateKey === todayDateKey,
-                    leave: isLeaveShift(shift.value),
-                    'has-event': Boolean(shiftEventText(shift)),
-                    'is-unplanned': shift.isPlaceholder
-                  }"
-                  :style="shiftIndex === 0 ? { gridColumnStart: calendarStartColumn } : null"
-                  :aria-pressed="shiftIndex === selectedShiftIndex"
-                  :aria-label="`${shift.dateKey}${shiftEventText(shift) ? ': ' + shiftEventText(shift) : ''}`"
-                  type="button"
-                  @click="selectDay(shiftIndex)"
-                >
-                  {{ shift.day }}
-                </button>
               </div>
-
-              <div class="summary-strip monthly-summary" aria-label="This month's totals">
-                <div>
-                  <strong>{{ calendarShifts.length }}</strong>
-                  <span>Days</span>
-                </div>
-                <div>
-                  <strong>{{ profileShiftCount(calendarProfile) }}</strong>
-                  <span>Shifts</span>
-                </div>
-                <div>
-                  <strong>{{ profileOffCount(calendarProfile) }}</strong>
-                  <span>Leaves</span>
-                </div>
-                <div>
-                  <strong>{{ profileMorningShiftCount(calendarProfile) }}</strong>
-                  <span>Morning</span>
-                </div>
-                <div>
-                  <strong>{{ profileEveningShiftCount(calendarProfile) }}</strong>
-                  <span>Evening</span>
-                </div>
-                <div>
-                  <strong>{{ profileLateShiftCount(calendarProfile) }}</strong>
-                  <span>Late</span>
-                </div>
-              </div>
+              <month-calendar class="month-overview" :key="`calendar-${calendarMonthOffset}`"
+                :days="calendarDays" :selected-index="selectedShiftIndex" :today="todayDateKey"
+                :start-column="calendarStartColumn" @select="selectDay"></month-calendar>
+              <monthly-summary :items="monthlyStats"></monthly-summary>
             </div>
 
             <div v-else class="empty-result dark-empty">
@@ -531,6 +423,7 @@
       >
         <section
           class="coworker-modal"
+          v-dialog-focus="closeCoworkerModal"
           role="dialog"
           aria-modal="true"
           aria-labelledby="coworker-modal-title"
@@ -579,6 +472,7 @@
       >
         <section
           class="name-editor-modal"
+          v-dialog-focus="closeNameEditor"
           role="dialog"
           aria-modal="true"
           aria-labelledby="name-editor-title"
@@ -633,6 +527,7 @@
       >
         <section
           class="name-editor-modal event-editor-modal"
+          v-dialog-focus="closeDateEventEditor"
           role="dialog"
           aria-modal="true"
           aria-labelledby="event-editor-title"
@@ -688,6 +583,7 @@
       >
         <section
           class="name-editor-modal reminder-settings-modal"
+          v-dialog-focus="closeReminderSettings"
           role="dialog"
           aria-modal="true"
           aria-labelledby="reminder-settings-title"
@@ -799,6 +695,7 @@
       >
         <section
           class="name-editor-modal shift-editor-modal"
+          v-dialog-focus="closeShiftEditor"
           role="dialog"
           aria-modal="true"
           aria-labelledby="shift-editor-title"

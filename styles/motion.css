@@ -1,0 +1,20 @@
+@layer components {
+  .page-enter-active { transition: opacity 200ms ease, transform 280ms var(--ease-settle); }
+  .page-leave-active { transition: opacity 120ms ease; }
+  .page-enter-from { opacity: 0; transform: translateY(6px); }
+  .page-leave-to { opacity: 0; }
+  .dialog-enter-active { transition: opacity 240ms ease; }
+  .dialog-leave-active { transition: opacity 160ms ease; pointer-events: none; }
+  .dialog-enter-active > section { transition: transform 320ms var(--ease-spring), opacity 200ms ease; }
+  .dialog-leave-active > section { transition: transform 160ms ease, opacity 160ms ease; }
+  .dialog-enter-from, .dialog-leave-to { opacity: 0; }
+  .dialog-enter-from > section { transform: translateY(12px) scale(.97); opacity: 0; }
+  .dialog-leave-to > section { transform: translateY(6px) scale(.99); opacity: 0; }
+  .month-enter-active { transition: opacity 180ms ease, transform 220ms var(--ease-settle); }
+  .month-leave-active { transition: opacity 100ms ease; }
+  .month-enter-from { opacity: 0; transform: translateY(6px); }
+  .month-leave-to { opacity: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  }
+}

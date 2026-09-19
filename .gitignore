@@ -6,4 +6,7 @@ node_modules/
 public/
 assets/app.css
 test-results/
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/config.local.json
 wrangler.generated.jsonc

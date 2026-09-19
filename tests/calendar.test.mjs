@@ -45,6 +45,28 @@ test("calendar preserves actual shifts and fills missing dates without declaring
   assert.equal(sandbox.isNonWorkingShift(days[0].value), false);
 });
 
+test("calendar presentation preserves context, events and real monthly totals", () => {
+  const { app } = appHarness();
+  app.rosterDb = { year: 2026, month: 9, profiles: [{
+    id: "person-0", name: "Test", shifts: [
+      { dateKey: "2026-09-01", day: 1, value: "08:00 (TR)" },
+      { dateKey: "2026-09-02", day: 2, value: "14:00 (CDT)" },
+      { dateKey: "2026-09-03", day: 3, value: "22:30" },
+      { dateKey: "2026-09-04", day: 4, value: "AL" },
+    ],
+  }] };
+  app.selectedProfileId = "person-0";
+  app.dateEvents = { "2026-09-02": "Dinner" };
+  assert.equal(app.calendarDays[0].main, "08:00");
+  assert.match(app.calendarDays[0].context, /TR/);
+  assert.equal(app.calendarDays[1].event, "Dinner");
+  assert.equal(app.calendarDays[2].late, true);
+  assert.equal(app.calendarDays[3].leave, true);
+  assert.deepEqual(Array.from(app.monthlyStats, (item) => item.value), [30, 3, 1, 1, 1, 1]);
+  app.calendarMonthOffset = 1;
+  assert.deepEqual(Array.from(app.monthlyStats, (item) => item.value), [31, 0, 0, 0, 0, 0]);
+});
+
 test("calendar handles leap years and December rollover with local date keys", () => {
   const { app, sandbox } = appHarness();
   assert.equal(sandbox.buildCalendarMonth(2028, 2).length, 29);

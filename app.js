@@ -30,6 +30,8 @@ const DEFAULT_REMINDER_TIME = Object.freeze({
 const SHIFT_CONTEXT_MAX_LENGTH = 24;
 
 createApp({
+  components: window.ScheduleUI,
+  directives: { dialogFocus: window.ScheduleDialogFocus },
   data() {
     return {
       selectedFile: null,
@@ -197,6 +199,26 @@ createApp({
     },
     calendarProfile() {
       return { shifts: this.calendarShifts.filter((shift) => !shift.isPlaceholder) };
+    },
+    calendarDays() {
+      return this.calendarShifts.map((shift) => ({
+        ...shift,
+        main: this.displayShiftMain(shift.value),
+        context: this.displayShiftContext(shift.value),
+        event: this.shiftEventText(shift),
+        leave: this.isLeaveShift(shift.value),
+        late: this.shiftClass(shift)["is-late"],
+      }));
+    },
+    monthlyStats() {
+      return [
+        { label: "Days", value: this.calendarShifts.length },
+        { label: "Shifts", value: this.profileShiftCount(this.calendarProfile) },
+        { label: "Leaves", value: this.profileOffCount(this.calendarProfile), tone: "stat-leave" },
+        { label: "Morning", value: this.profileMorningShiftCount(this.calendarProfile), tone: "stat-work" },
+        { label: "Evening", value: this.profileEveningShiftCount(this.calendarProfile) },
+        { label: "Late", value: this.profileLateShiftCount(this.calendarProfile), tone: "stat-late" },
+      ];
     },
     calendarStartColumn() {
       return (this.calendarMonth.getDay() + 6) % 7 + 1;

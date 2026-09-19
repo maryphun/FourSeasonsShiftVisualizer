@@ -8,6 +8,7 @@ const publicDir = path.join(rootDir, "public");
 const staticEntries = [
   "index.html",
   "app.js",
+  "ui-components.js",
   "service-worker.js",
   "site.webmanifest",
   "assets",
@@ -28,6 +29,7 @@ let publicIndex = await readFile(publicIndexPath, "utf8");
 publicIndex = publicIndex
   .replace(/(<meta\s+name="app-version"\s+content=")[^"]+(")/, `$1${buildVersion}$2`)
   .replace(/(assets\/app\.css\?v=)[^"']+/, `$1${buildVersion}`)
+  .replace(/(ui-components\.js\?v=)[^"']+/, `$1${buildVersion}`)
   .replace(/(app\.js\?v=)[^"']+/, `$1${buildVersion}`);
 await writeFile(publicIndexPath, publicIndex);
 

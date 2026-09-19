@@ -1,0 +1,62 @@
+@font-face {
+  font-family: "Manrope";
+  src: url("./Manrope-Variable.ttf") format("truetype");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: "Manrope", "Segoe UI", -apple-system, sans-serif;
+  --color-canvas: #f4f5f7;
+  --color-surface: #ffffff;
+  --color-raised: #e9ebef;
+  --color-edge: #d9dde3;
+  --color-ink: #20242b;
+  --color-quiet: #606670;
+  --color-accent: #773c4f;
+  --color-accent-soft: #efe4e8;
+  --color-work: #306459;
+  --color-work-soft: #eaf2ee;
+  --color-leave: #814354;
+  --color-leave-soft: #f6ebee;
+  --color-late: #455575;
+  --color-late-soft: #e9edf4;
+  --ease-spring: cubic-bezier(.2, 1.12, .32, 1);
+  --ease-settle: cubic-bezier(.16, 1, .3, 1);
+}
+
+@layer components {
+  :root {
+    color-scheme: light;
+    --navy: var(--color-canvas);
+    --panel: var(--color-surface);
+    --panel-2: var(--color-raised);
+    --steel: var(--color-accent);
+    --steel-soft: var(--color-quiet);
+    --mist: var(--color-ink);
+    --white: var(--color-ink);
+    --paper: var(--color-surface);
+    --cell: var(--color-surface);
+    --line: var(--color-edge);
+    --muted: var(--color-quiet);
+    --danger: #a33345;
+    --panel-border: var(--color-edge);
+    --soft-border: var(--color-edge);
+    --app-font: var(--font-sans);
+    font-family: var(--app-font);
+    font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+  }
+  * { letter-spacing: 0; scrollbar-color: #b8bec7 transparent; scrollbar-width: thin; }
+  ::selection { background: var(--color-accent-soft); color: var(--color-accent); }
+  input, select, textarea { caret-color: var(--color-accent); accent-color: var(--color-accent); }
+  button, input, select, textarea { font-family: var(--app-font); }
+  strong, button { font-weight: 650; }
+  button { -webkit-user-select: none; user-select: none; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+}

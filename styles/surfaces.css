@@ -1,0 +1,101 @@
+@layer components {
+  .app-main { max-width: 1160px; padding: max(16px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); }
+  .app-main.with-results { align-items: center; }
+  .app-shell { max-width: 520px; max-height: 860px; gap: 12px; }
+  .upload-panel, .profile-panel, .schedule-panel, .status-panel { width: 100%; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+  .schedule-panel { flex: 1 1 auto; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
+  .day-card-section { overflow-y: auto; overscroll-behavior: contain; }
+  .app-toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; gap: 8px; border-top: 1px solid var(--color-edge); padding-top: 10px; flex-shrink: 0; }
+  .app-toolbar .tool-button { min-width: 0; width: 100%; background: transparent; border-color: transparent; color: var(--color-quiet); min-height: 40px; font-size: .625rem; font-weight: 600; padding-inline: 2px; gap: 6px; white-space: nowrap; }
+  .app-toolbar .tool-button:hover { background: var(--color-raised); color: var(--color-ink); }
+  .app-toolbar svg { width: 16px; height: 16px; }
+
+  .modal-backdrop { padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); background: #20242b66; backdrop-filter: blur(4px); }
+  .coworker-modal, .name-editor-modal { background: var(--color-surface); border: 0; border-radius: 8px; box-shadow: 0 24px 80px #20242b33; }
+  .coworker-modal-head { padding: 20px; border-color: var(--color-edge); }
+  .coworker-modal-head strong { font-weight: 700; font-size: 1.125rem; line-height: 1.4; }
+  .coworker-modal-head span { font-size: .6875rem; font-weight: 550; }
+  .name-editor-field span, .shift-editor-label, .shift-wheel-column small { color: var(--color-quiet); font-size: .6875rem; font-weight: 600; }
+  .name-editor-body { padding: 20px; gap: 18px; }
+  .coworker-list { gap: 0; padding: 4px 20px; }
+  .coworker-row { border: 0; border-bottom: 1px solid var(--color-edge); border-radius: 0; background: transparent; padding: 12px 0; }
+  .coworker-row:last-child { border: 0; }
+  .coworker-row strong { font-size: .8125rem; font-weight: 650; line-height: 1.4; }
+  .coworker-row time { font-size: .8125rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: normal; text-align: right; max-width: 98px; }
+  .shift-mode-toggle { position: relative; isolation: isolate; border-radius: 8px; gap: 0; border: 0; background: var(--color-canvas); padding: 4px; }
+  .shift-mode-toggle::before { content: ""; position: absolute; z-index: -1; inset: 4px auto 4px 4px; width: calc(50% - 4px); border-radius: 5px; background: var(--color-accent-soft); transition: transform 320ms var(--ease-spring); }
+  .shift-mode-toggle:has(button:nth-child(2).active)::before { transform: translateX(100%); }
+  .shift-mode-toggle button { border-radius: 5px; font-size: .8125rem; font-weight: 650; }
+  .shift-mode-toggle button.active { background: transparent; color: var(--color-accent); box-shadow: none; animation: none; }
+  .shift-time-picker { padding: 0; border: 0; border-radius: 0; background: transparent; }
+  .shift-time-wheel { border-radius: 6px; background: var(--color-canvas); }
+  .shift-time-wheel button { font-size: 1.5rem; font-weight: 500; color: var(--color-quiet); border-radius: 4px; }
+  .shift-time-wheel button.active { background: var(--color-accent-soft); color: var(--color-accent); transform: none; }
+  .shift-editor-preview { border: 0; border-top: 1px solid var(--color-edge); border-radius: 0; background: transparent; padding: 14px 0 0; }
+  .shift-editor-preview span { font-size: .6875rem; font-weight: 550; }
+  .shift-editor-preview strong { font-size: 1rem; font-weight: 650; }
+
+  .upload-empty { gap: 32px; }
+  .upload-thumbnail { width: 140px; height: 140px; border: 0; border-radius: 8px; box-shadow: 0 12px 28px #20242b22; }
+  .upload-actions { gap: 12px; }
+  .upload-return-button { background: transparent; }
+  .upload-panel.is-dragging { background: var(--color-accent-soft); box-shadow: none; outline: 2px dashed var(--color-accent); }
+  .identity-picker-card { background: var(--color-surface); border-color: var(--color-edge); box-shadow: none; }
+  .identity-picker-card.is-active { border-color: var(--color-accent); box-shadow: none; }
+  .identity-picker-card strong, .profile-heading strong { color: var(--color-ink); font-size: 1.25rem; font-weight: 650; }
+  .profile-heading span, .identity-picker-card span:last-child { font-weight: 500; }
+  .carousel-dots span.active { background: var(--color-accent); }
+  .profile-panel { max-width: 600px; }
+  .editor-topbar { border: 0; border-bottom: 1px solid var(--color-edge); border-radius: 0; background: transparent; padding-bottom: 16px; }
+  .editor-title strong { font-size: 1rem; font-weight: 700; }
+  .editor-title span, .editor-count { font-size: .6875rem; font-weight: 550; }
+  .editor-sheet { border-color: var(--color-edge); background: var(--color-surface); color: var(--color-ink); box-shadow: none; }
+  .editor-sheet .sheet-scroll { background: var(--color-surface); }
+  .sheet-topline { background: var(--color-raised); color: var(--color-ink); }
+  .sheet-topline strong, .sheet-topline span { font-weight: 600; }
+  .sheet-table th, .sheet-table td { border-color: var(--color-edge); background: var(--color-surface); }
+  .sheet-table thead th, .sheet-table .row-head, .sheet-table .corner-cell { background: var(--color-raised); color: var(--color-quiet); font-weight: 600; }
+  .sheet-table input { background: transparent; color: var(--color-ink); font-weight: 500; }
+  .sheet-table tbody tr:first-child input { background: var(--color-canvas); color: var(--color-accent); font-weight: 650; }
+  .sheet-table input:focus { background: var(--color-accent-soft); }
+  .sheet-table td.needs-review, .sheet-table td.needs-review input { background: #fff1cc; color: #714b00; }
+  .status-panel { padding: 12px 4px; }
+  .status-row strong { font-size: .8125rem; font-weight: 600; }
+  .progress-track { background: var(--color-raised); }
+  .progress-fill { width: 100%; transform-origin: left; background: var(--color-accent); transition: transform 300ms ease; }
+
+  @media (min-width: 960px) {
+    .app-main { padding-block: 48px; }
+    .app-shell { max-width: 1120px; gap: 24px; }
+    .app-toolbar { padding-top: 16px; display: flex; justify-content: flex-end; gap: 16px; }
+    .app-toolbar .tool-button { width: auto; padding-inline: 12px; font-size: .75rem; }
+    .upload-panel { max-width: 520px; }
+  }
+  @media (max-height: 740px) and (max-width: 959px) {
+    .app-main { padding-block: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-bottom)); }
+    .app-shell { gap: 8px; }
+    .schedule-hero { padding-bottom: 8px; }
+    .day-card-section { grid-template-rows: 36px 220px auto auto; gap: 7px; padding-top: 8px; }
+    .daily-focus { grid-template-rows: 180px 36px; gap: 4px; }
+    .day-event-tools, .add-event-button { min-height: 36px; height: 36px; }
+    .day-carousel-viewport { min-height: 180px; }
+    .day-shift-card { height: 172px; min-height: 172px; padding-block: 10px; gap: 4px; grid-template-rows: 22px minmax(0, 1fr) 52px; }
+    .day-card-main time, .day-shift-card.is-off .day-card-main time { height: 56px; }
+    .day-card-action { min-height: 52px; gap: 0; }
+    .day-pills { grid-template-rows: repeat(var(--calendar-weeks), 32px); }
+    .summary-strip.monthly-summary { padding-top: 8px; gap: 8px 0; }
+    .summary-strip .summary-item { flex-direction: row-reverse; align-items: center; justify-content: flex-end; gap: 6px; min-height: 24px; padding-inline: 8px; }
+    .summary-item dd { font-size: .9375rem; }
+    .summary-item dt { font-size: .5625rem; }
+    .app-toolbar { padding-top: 6px; }
+    .app-toolbar .tool-button { min-height: 36px; }
+  }
+  @media (min-height: 821px) and (max-width: 959px) {
+    .day-pills { grid-template-rows: repeat(var(--calendar-weeks), 40px); }
+  }
+  @media (max-height: 650px) and (min-width: 960px) {
+    .app-main { padding-block: 20px; }
+    .schedule-panel { overflow-y: auto; }
+    .day-card-section { overflow: visible; }
+  }
+}

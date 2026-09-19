@@ -1,0 +1,181 @@
+{
+  "title": "Choose the dashboard direction",
+  "question": "A phone-first daily shift, with more useful space on desktop.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Shift Folio",
+      "kicker": "THE ROLL",
+      "lineage": "Hotel handover folios",
+      "thesis": "A crisp daily shift slip beside an ordered monthly roster.",
+      "palette": [
+        "#f4f5f7",
+        "#20242b",
+        "#773c4f",
+        "#e4edf0"
+      ],
+      "materials": [
+        "cool white paper",
+        "fine ink rules"
+      ],
+      "viewport": "Your date and shift lead on a phone; desktop pairs the daily card with the full month.",
+      "risk": "The light surface is a deliberate change from the current dark app.",
+      "raised": [
+        {
+          "from": "Metro",
+          "raise": "Typography and selection carry hierarchy without extra framing."
+        },
+        {
+          "from": "Type specimen",
+          "raise": "Shift numerals stay clearly readable at a glance."
+        },
+        {
+          "from": "Crew terminal",
+          "raise": "Every control has a consistent, explicit state."
+        },
+        {
+          "from": "Oscilloscope",
+          "raise": "Selection stays synchronized across card and calendar."
+        },
+        {
+          "from": "Alphabet storm",
+          "raise": "Motion preserves readable content throughout."
+        },
+        {
+          "from": "Drawcord cape",
+          "raise": "One composition adapts instead of accumulating panels."
+        }
+      ],
+      "comp": ".impeccable/mocks/decision/assigned.webp"
+    },
+    {
+      "id": "crew",
+      "label": "Crew Terminal",
+      "verdict": "declined",
+      "thesis": "Typed commands and warning chrome obscure quick touch actions.",
+      "palette": [
+        "#08120c",
+        "#67ed8d"
+      ],
+      "materials": [
+        "screen"
+      ],
+      "viewport": "A reinterpreted daily roster.",
+      "risk": "Typed commands and warning chrome obscure quick touch actions.",
+      "case": "Declined on both audience fit and immediate task clarity.",
+      "kept": "Consistent control states"
+    },
+    {
+      "id": "metro",
+      "label": "Metro Roster",
+      "verdict": "declined",
+      "thesis": "Oversized cropped text and panorama navigation weaken complete date visibility.",
+      "palette": [
+        "#080808",
+        "#00a5c9"
+      ],
+      "materials": [
+        "screen"
+      ],
+      "viewport": "A reinterpreted daily roster.",
+      "risk": "Oversized cropped text and panorama navigation weaken complete date visibility.",
+      "case": "Declined on both audience fit and immediate task clarity.",
+      "kept": "Hierarchy without extra framing"
+    },
+    {
+      "id": "type",
+      "label": "Type Specimen",
+      "verdict": "declined",
+      "thesis": "Glyph-axis navigation has no shift-scheduling equivalent.",
+      "palette": [
+        "#fafafa",
+        "#191919"
+      ],
+      "materials": [
+        "screen"
+      ],
+      "viewport": "A reinterpreted daily roster.",
+      "risk": "Glyph-axis navigation has no shift-scheduling equivalent.",
+      "case": "Declined on both audience fit and immediate task clarity.",
+      "kept": "Readable numerals"
+    },
+    {
+      "id": "scope",
+      "label": "Signal Bench",
+      "verdict": "declined",
+      "thesis": "Channels and instrument controls add interpretation to a simple schedule.",
+      "palette": [
+        "#0c1010",
+        "#90e6a2"
+      ],
+      "materials": [
+        "screen"
+      ],
+      "viewport": "A reinterpreted daily roster.",
+      "risk": "Channels and instrument controls add interpretation to a simple schedule.",
+      "case": "Declined on both audience fit and immediate task clarity.",
+      "kept": "Synchronized selection"
+    },
+    {
+      "id": "storm",
+      "label": "Alphabet Storm",
+      "verdict": "declined",
+      "thesis": "Transforming letterforms work against reading a shift immediately.",
+      "palette": [
+        "#ffffff",
+        "#161616"
+      ],
+      "materials": [
+        "screen"
+      ],
+      "viewport": "A reinterpreted daily roster.",
+      "risk": "Transforming letterforms work against reading a shift immediately.",
+      "case": "Declined on both audience fit and immediate task clarity.",
+      "kept": "Readable motion"
+    },
+    {
+      "id": "cape",
+      "label": "Drawcord",
+      "verdict": "declined",
+      "thesis": "Shape manipulation distracts from selecting exact dates.",
+      "palette": [
+        "#141414",
+        "#caa759"
+      ],
+      "materials": [
+        "screen"
+      ],
+      "viewport": "A reinterpreted daily roster.",
+      "risk": "Shape manipulation distracts from selecting exact dates.",
+      "case": "Declined on both audience fit and immediate task clarity.",
+      "kept": "Responsive coherence"
+    }
+  ],
+  "reroll": {
+    "registers": [
+      "safer",
+      "bolder"
+    ]
+  },
+  "buildPath": {
+    "value": "code",
+    "toggle": true
+  },
+  "canon": true,
+  "canonCard": {
+    "label": "Conventional calendar",
+    "thesis": "A familiar calendar app, with the daily shift above the month.",
+    "palette": [
+      "#ffffff",
+      "#20242b",
+      "#3371ce"
+    ],
+    "materials": [
+      "flat interface"
+    ],
+    "viewport": "Standard date grid and a selected-day panel.",
+    "risk": "Familiar by design, with less individual character.",
+    "comp": ".impeccable/mocks/decision/canon.webp"
+  },
+  "steer": true
+}
