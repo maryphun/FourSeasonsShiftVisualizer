@@ -51,6 +51,8 @@ createApp({
       profileTransitionDirection: "",
       profileTransitionTimer: null,
       selectedShiftIndex: 0,
+      calendarMonthOffset: 0,
+      calendarToday: formatDateKey(new Date()),
       daySwipeX: null,
       daySwipeY: null,
       dayDragOffset: 0,
@@ -173,10 +175,34 @@ createApp({
       return this.selectedProfile.shifts.find((shift) => shift.dateKey === this.todayDateKey) || null;
     },
     todayDateKey() {
-      return formatDateKey(new Date());
+      return this.calendarToday;
+    },
+    calendarMonth() {
+      const now = new Date(`${this.todayDateKey}T12:00:00`);
+      return new Date(this.rosterDb?.year || now.getFullYear(),
+        (this.rosterDb?.month || now.getMonth() + 1) - 1 + this.calendarMonthOffset, 1);
+    },
+    calendarMonthLabel() {
+      return `${monthShortName(this.calendarMonth.getMonth() + 1)} ${this.calendarMonth.getFullYear()}`;
+    },
+    maxCalendarMonthOffset() {
+      const now = new Date(`${this.todayDateKey}T12:00:00`);
+      const year = this.rosterDb?.year || now.getFullYear();
+      const month = this.rosterDb?.month || now.getMonth() + 1;
+      return Math.max(1, (now.getFullYear() - year) * 12 + now.getMonth() + 2 - month);
+    },
+    calendarShifts() {
+      return buildCalendarMonth(this.calendarMonth.getFullYear(), this.calendarMonth.getMonth() + 1,
+        this.selectedProfile?.shifts || []);
+    },
+    calendarProfile() {
+      return { shifts: this.calendarShifts.filter((shift) => !shift.isPlaceholder) };
+    },
+    calendarStartColumn() {
+      return (this.calendarMonth.getDay() + 6) % 7 + 1;
     },
     activeShift() {
-      const shifts = this.selectedProfile?.shifts || [];
+      const shifts = this.calendarShifts;
       if (!shifts.length) return null;
       return shifts[clampIndex(this.selectedShiftIndex, shifts.length)] || shifts[0];
     },
@@ -251,7 +277,7 @@ createApp({
       return this.reminderSupported && this.reminderConfigured && !this.isReminderBusy;
     },
     dayCarouselItems() {
-      const shifts = this.selectedProfile?.shifts || [];
+      const shifts = this.calendarShifts;
       const count = shifts.length;
       if (!count) return [];
 
@@ -393,6 +419,7 @@ createApp({
       this.versionWakeHandlers = {
         visibility: () => {
           if (document.visibilityState === "visible") {
+            this.calendarToday = formatDateKey(new Date());
             this.checkAppVersion({ force: true });
           }
         },
@@ -634,6 +661,7 @@ createApp({
       this.statusText = `Roster saved with ${rosterDb.profiles.length} profiles`;
     },
     setRosterDb(rosterDb) {
+      this.calendarMonthOffset = 0;
       this.rosterDb = rosterDb;
       this.table = padRows(rosterDb.rawTable || this.table);
       this.cellReviewHints = normalizeReviewHints(rosterDb.reviewHints);
@@ -1095,7 +1123,7 @@ createApp({
       this.eventEditorValue = "";
     },
     openShiftEditor(shift = this.activeShift) {
-      if (!shift || !this.selectedProfile) return;
+      if (!shift || shift.isPlaceholder || !this.selectedProfile) return;
       this.closeCoworkerModal();
       this.closeDateEventEditor();
       this.closeNameEditor();
@@ -1421,8 +1449,19 @@ createApp({
         "is-today": shift.dateKey === this.todayDateKey,
       };
     },
+    changeCalendarMonth(delta) {
+      const offset = this.calendarMonthOffset + delta;
+      if (offset < 0 || offset > this.maxCalendarMonthOffset) return;
+      const day = this.activeShift?.day || 1;
+      this.resetDayMotion();
+      this.closeCoworkerModal();
+      this.closeDateEventEditor();
+      this.closeShiftEditor();
+      this.calendarMonthOffset = offset;
+      this.selectedShiftIndex = Math.min(day, this.calendarShifts.length) - 1;
+    },
     syncSelectedShiftIndex() {
-      const shifts = this.selectedProfile?.shifts || [];
+      const shifts = this.calendarShifts;
       if (!shifts.length) {
         this.resetDayMotion();
         this.selectedShiftIndex = 0;
@@ -1435,10 +1474,15 @@ createApp({
         todayIndex >= 0 ? todayIndex : Math.min(this.selectedShiftIndex, shifts.length - 1);
     },
     selectDay(index) {
-      const shifts = this.selectedProfile?.shifts || [];
+      const shifts = this.calendarShifts;
       if (!shifts.length) return;
 
       const targetIndex = Math.max(0, Math.min(index, shifts.length - 1));
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        this.resetDayMotion();
+        this.selectedShiftIndex = targetIndex;
+        return;
+      }
       if (targetIndex === this.selectedShiftIndex && !this.dayTransitionDirection) {
         this.cancelDayFastTravel();
         return;
@@ -1474,8 +1518,15 @@ createApp({
       this.animateDay("next");
     },
     animateDay(direction, options = {}) {
-      const shifts = this.selectedProfile?.shifts || [];
+      const shifts = this.calendarShifts;
       if (shifts.length <= 1 || this.dayTransitionDirection) return;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        this.selectedShiftIndex = options.fast && this.dayFastTravelTargetIndex !== null
+          ? this.dayFastTravelTargetIndex
+          : clampIndex(this.selectedShiftIndex + (direction === "next" ? 1 : -1), shifts.length);
+        this.resetDayMotion();
+        return;
+      }
 
       const isFast = Boolean(options.fast);
       this.dayIsDragging = false;
@@ -1510,7 +1561,7 @@ createApp({
       }, isFast ? DAY_FAST_TRANSITION_MS : DAY_TRANSITION_MS);
     },
     stepDayFastTravel() {
-      const shifts = this.selectedProfile?.shifts || [];
+      const shifts = this.calendarShifts;
       if (!shifts.length || this.dayFastTravelTargetIndex === null) {
         this.cancelDayFastTravel();
         return;
@@ -1580,7 +1631,6 @@ createApp({
       this.daySwipeY = Number(event.clientY);
       this.dayDragOffset = 0;
       this.dayIsDragging = true;
-      event.currentTarget?.setPointerCapture?.(event.pointerId);
     },
     moveDaySwipe(event) {
       if (this.daySwipeX === null || this.dayTransitionDirection) return;
@@ -1589,7 +1639,11 @@ createApp({
       const verticalDistance = Math.abs(Number(event.clientY) - this.daySwipeY);
       if (Math.abs(distance) < verticalDistance) return;
 
-      if (Math.abs(distance) > 8) event.preventDefault?.();
+      // Preserve button taps; capture the pointer only after a horizontal drag starts.
+      if (Math.abs(distance) > 8) {
+        event.currentTarget?.setPointerCapture?.(event.pointerId);
+        event.preventDefault?.();
+      }
       this.dayDragOffset = distance * 0.62;
     },
     finishDaySwipe(event) {
@@ -1616,6 +1670,9 @@ createApp({
       this.daySwipeY = null;
       this.dayDragOffset = 0;
       this.dayIsDragging = false;
+    },
+    leaveDaySwipe(event) {
+      if (!event.currentTarget?.hasPointerCapture?.(event.pointerId)) this.cancelDaySwipe();
     },
     openDataEditor() {
       if (!this.hasTable) return;
@@ -1752,7 +1809,7 @@ createApp({
     },
     refreshIcons() {
       nextTick(() => {
-        if (window.lucide) window.lucide.createIcons();
+        if (window.lucide && document.querySelector("i[data-lucide]")) window.lucide.createIcons();
       });
     },
   },
@@ -2127,6 +2184,22 @@ function formatDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+function buildCalendarMonth(year, month, shifts = []) {
+  const saved = new Map(shifts.map((shift) => [shift.dateKey, shift]));
+  return Array.from({ length: new Date(year, month, 0).getDate() }, (_, index) => {
+    const date = new Date(year, month - 1, index + 1);
+    const dateKey = formatDateKey(date);
+    return saved.get(dateKey) || {
+      dateKey,
+      day: index + 1,
+      weekday: shortWeekday(date),
+      dateLabel: `${index + 1}-${monthShortName(month)}`,
+      value: "",
+      isPlaceholder: true,
+    };
+  });
+}
+
 function offsetDateKey(offsetDays) {
   const date = new Date();
   date.setDate(date.getDate() + offsetDays);
@@ -2240,9 +2313,9 @@ function shiftStartHour(value) {
 
 function findMatchingShift(shifts, targetShift) {
   if (!Array.isArray(shifts) || !targetShift) return null;
+  if (targetShift.dateKey) return shifts.find((shift) => shift.dateKey === targetShift.dateKey) || null;
 
   return (
-    shifts.find((shift) => targetShift.dateKey && shift.dateKey === targetShift.dateKey) ||
     shifts.find((shift) => Number.isInteger(targetShift.columnIndex) && shift.columnIndex === targetShift.columnIndex) ||
     shifts.find((shift) => shift.day === targetShift.day && shift.dateLabel === targetShift.dateLabel) ||
     null

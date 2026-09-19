@@ -7,12 +7,12 @@
       content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
     />
     <title>Schedule Photo Reader</title>
-    <meta name="theme-color" content="#0a1724" />
+    <meta name="theme-color" content="#101113" />
     <meta name="app-version" content="2026090701" />
     <link rel="icon" type="image/png" href="assets/app-icon.png" />
     <link rel="apple-touch-icon" href="assets/app-icon.png" />
     <link rel="manifest" href="site.webmanifest" />
-    <link rel="stylesheet" href="styles.css?v=2026090701" />
+    <link rel="stylesheet" href="assets/app.css?v=2026090701" />
     <script defer src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script defer src="https://unpkg.com/lucide@latest"></script>
     <script defer src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -20,7 +20,9 @@
   </head>
   <body>
     <div id="app" v-cloak>
+      <Transition name="page" mode="out-in" appear @after-enter="refreshIcons">
       <main
+        :key="showUploadScreen ? 'upload' : showSpreadsheet ? 'editor' : 'schedule'"
         class="app-main"
         :class="{ 'with-results': (selectedFile || hasDatabase) && !showUploadScreen, 'is-editing': showSpreadsheet }"
       >
@@ -250,12 +252,12 @@
                 <div class="schedule-person">
                   <span class="avatar large">{{ profileInitials(displayProfileName(selectedProfile)) }}</span>
                   <div class="schedule-person-copy">
-                    <span>{{ rosterMonthLabel }}</span>
                     <div class="name-line">
                       <strong>{{ displayProfileName(selectedProfile) }}</strong>
                       <button
                         class="name-edit-button"
                         type="button"
+                        title="Edit name"
                         :aria-label="`Edit ${displayProfileName(selectedProfile)}`"
                         @click="openNameEditor(selectedProfile)"
                       >
@@ -286,20 +288,34 @@
 
             <div v-if="activeShift" class="day-card-section">
               <div class="day-section-header">
-                <small>{{ selectedShiftIndex + 1 }} / {{ selectedProfile.shifts.length }}</small>
+                <nav class="month-navigation flex min-w-0 items-center gap-2" aria-label="Calendar month">
+                  <button class="month-arrow" type="button" title="Previous month" aria-label="Previous month"
+                    :disabled="calendarMonthOffset === 0" @click="changeCalendarMonth(-1)">
+                    <i data-lucide="chevron-left"></i>
+                  </button>
+                  <span class="month-label text-center font-semibold tabular-nums" aria-live="polite">{{ calendarMonthLabel }}</span>
+                  <button class="month-arrow" type="button" title="Next month" aria-label="Next month"
+                    :disabled="calendarMonthOffset >= maxCalendarMonthOffset" @click="changeCalendarMonth(1)">
+                    <i data-lucide="chevron-right"></i>
+                  </button>
+                </nav>
+                <small class="tabular-nums">{{ selectedShiftIndex + 1 }} / {{ calendarShifts.length }}</small>
               </div>
 
+              <Transition name="month" mode="out-in" @after-enter="refreshIcons">
               <div
+                :key="calendarMonthOffset"
                 class="day-carousel"
                 @pointerdown="startDaySwipe"
                 @pointermove="moveDaySwipe"
                 @pointerup="finishDaySwipe"
                 @pointercancel="cancelDaySwipe"
+                @pointerleave="leaveDaySwipe"
               >
                 <button
                   class="carousel-arrow day-arrow"
                   type="button"
-                  :disabled="selectedProfile.shifts.length <= 1 || Boolean(dayTransitionDirection) || dayIsFastTraveling"
+                  :disabled="calendarShifts.length <= 1 || Boolean(dayTransitionDirection) || dayIsFastTraveling"
                   aria-label="Previous day"
                   @click="handleDayArrowClick('previous')"
                 >
@@ -316,6 +332,7 @@
                     :key="`${item.slot}-${item.shift.dateKey || item.shift.dateLabel}`"
                     class="day-shift-card day-carousel-card"
                     :class="[shiftClass(item.shift), `is-${item.slot}`]"
+                    :aria-hidden="item.slot !== 'active'"
                     @click="handleDayCardClick(item.slot)"
                   >
                     <img
@@ -339,7 +356,7 @@
                       </time>
                       <div
                         class="day-shift-display"
-                        :class="{ 'has-context': displayShiftContext(item.shift.value) }"
+                        :class="{ 'has-context': displayShiftContext(item.shift.value), 'is-long': displayShiftMain(item.shift.value).length > 5 }"
                       >
                         <strong>{{ displayShiftMain(item.shift.value) }}</strong>
                         <small v-if="displayShiftContext(item.shift.value)">
@@ -353,6 +370,7 @@
                         class="day-event-note"
                         :class="{ 'is-empty': !shiftEventText(item.shift) }"
                         :aria-hidden="!shiftEventText(item.shift)"
+                        :title="shiftEventText(item.shift)"
                       >
                         {{ shiftEventText(item.shift) || "No event" }}
                       </p>
@@ -379,13 +397,14 @@
                 <button
                   class="carousel-arrow day-arrow"
                   type="button"
-                  :disabled="selectedProfile.shifts.length <= 1 || Boolean(dayTransitionDirection) || dayIsFastTraveling"
+                  :disabled="calendarShifts.length <= 1 || Boolean(dayTransitionDirection) || dayIsFastTraveling"
                   aria-label="Next day"
                   @click="handleDayArrowClick('next')"
                 >
                   <i data-lucide="chevron-right"></i>
                 </button>
               </div>
+              </Transition>
 
               <div class="day-event-tools">
                 <button class="add-event-button" type="button" @click="openDateEventEditor(activeShift)">
@@ -404,7 +423,8 @@
                 <button
                   class="add-event-button edit-day-button"
                   type="button"
-                  :disabled="Boolean(dayTransitionDirection) || dayIsFastTraveling"
+                  :disabled="activeShift.isPlaceholder || Boolean(dayTransitionDirection) || dayIsFastTraveling"
+                  :title="activeShift.isPlaceholder ? 'No roster for this date' : 'Edit shift'"
                   @click="openShiftEditor(activeShift)"
                 >
                   <i data-lucide="pencil"></i>
@@ -412,16 +432,21 @@
                 </button>
               </div>
 
-              <div class="day-pills" aria-label="Month days">
+              <div class="day-pills grid grid-cols-7 gap-1.5" :key="`calendar-${calendarMonthOffset}`" aria-label="Month days">
                 <button
-                  v-for="(shift, shiftIndex) in selectedProfile.shifts"
+                  v-for="(shift, shiftIndex) in calendarShifts"
                   :key="`pill-${shift.dateKey || shift.dateLabel}`"
                   class="day-pill"
                   :class="{
                     active: shiftIndex === selectedShiftIndex,
                     today: shift.dateKey === todayDateKey,
-                    leave: isLeaveShift(shift.value)
+                    leave: isLeaveShift(shift.value),
+                    'has-event': Boolean(shiftEventText(shift)),
+                    'is-unplanned': shift.isPlaceholder
                   }"
+                  :style="shiftIndex === 0 ? { gridColumnStart: calendarStartColumn } : null"
+                  :aria-pressed="shiftIndex === selectedShiftIndex"
+                  :aria-label="`${shift.dateKey}${shiftEventText(shift) ? ': ' + shiftEventText(shift) : ''}`"
                   type="button"
                   @click="selectDay(shiftIndex)"
                 >
@@ -431,27 +456,27 @@
 
               <div class="summary-strip monthly-summary" aria-label="This month's totals">
                 <div>
-                  <strong>{{ selectedProfile.shifts.length }}</strong>
+                  <strong>{{ calendarShifts.length }}</strong>
                   <span>Days</span>
                 </div>
                 <div>
-                  <strong>{{ profileShiftCount(selectedProfile) }}</strong>
+                  <strong>{{ profileShiftCount(calendarProfile) }}</strong>
                   <span>Shifts</span>
                 </div>
                 <div>
-                  <strong>{{ profileOffCount(selectedProfile) }}</strong>
+                  <strong>{{ profileOffCount(calendarProfile) }}</strong>
                   <span>Leaves</span>
                 </div>
                 <div>
-                  <strong>{{ profileMorningShiftCount(selectedProfile) }}</strong>
+                  <strong>{{ profileMorningShiftCount(calendarProfile) }}</strong>
                   <span>Morning</span>
                 </div>
                 <div>
-                  <strong>{{ profileEveningShiftCount(selectedProfile) }}</strong>
+                  <strong>{{ profileEveningShiftCount(calendarProfile) }}</strong>
                   <span>Evening</span>
                 </div>
                 <div>
-                  <strong>{{ profileLateShiftCount(selectedProfile) }}</strong>
+                  <strong>{{ profileLateShiftCount(calendarProfile) }}</strong>
                   <span>Late</span>
                 </div>
               </div>
@@ -495,7 +520,9 @@
           </div>
         </section>
       </main>
+      </Transition>
 
+      <Transition name="dialog" :duration="{ enter: 320, leave: 160 }" @after-enter="refreshIcons">
       <div
         v-if="coworkerModalShift"
         class="modal-backdrop"
@@ -541,7 +568,9 @@
           </div>
         </section>
       </div>
+      </Transition>
 
+      <Transition name="dialog" :duration="{ enter: 320, leave: 160 }" @after-enter="refreshIcons">
       <div
         v-if="nameEditorProfile"
         class="modal-backdrop name-editor-backdrop"
@@ -593,7 +622,9 @@
           </form>
         </section>
       </div>
+      </Transition>
 
+      <Transition name="dialog" :duration="{ enter: 320, leave: 160 }" @after-enter="refreshIcons">
       <div
         v-if="eventEditorShift"
         class="modal-backdrop event-editor-backdrop"
@@ -646,7 +677,9 @@
           </form>
         </section>
       </div>
+      </Transition>
 
+      <Transition name="dialog" :duration="{ enter: 320, leave: 160 }" @after-enter="refreshIcons">
       <div
         v-if="reminderSettingsOpen"
         class="modal-backdrop reminder-settings-backdrop"
@@ -755,7 +788,9 @@
           </form>
         </section>
       </div>
+      </Transition>
 
+      <Transition name="dialog" :duration="{ enter: 320, leave: 160 }" @after-enter="refreshIcons">
       <div
         v-if="shiftEditorShift"
         class="modal-backdrop shift-editor-backdrop"
@@ -804,7 +839,7 @@
             </section>
 
             <div class="shift-editor-dynamic">
-              <Transition name="shift-editor-panel" mode="out-in">
+              <Transition name="shift-editor-panel" mode="out-in" @after-enter="syncShiftWheelScroll">
                 <div
                   v-if="shiftEditorMode === 'off'"
                   key="off"
@@ -904,6 +939,7 @@
           </form>
         </section>
       </div>
+      </Transition>
     </div>
   </body>
 </html>

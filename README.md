@@ -23,7 +23,8 @@ server.local-config.mjs
 Then start the server from this folder:
 
 ```powershell
-node server.mjs
+npm.cmd install
+npm.cmd run dev
 ```
 
 Open:
@@ -39,8 +40,22 @@ You can also use a short-lived OAuth token instead:
 
 ```powershell
 $env:GOOGLE_OAUTH_TOKEN="YOUR_SHORT_LIVED_GOOGLE_TOKEN"
-node server.mjs
+npm.cmd run dev
 ```
+
+## UI development
+
+Tailwind CSS is compiled locally; no Tailwind CDN is required. `styles/app.css`
+defines the theme, motion, and component refinements, and imports the existing
+layout rules from `styles.css`. Both `npm.cmd run dev` and `npm.cmd run build`
+generate `assets/app.css`. Run `npm.cmd run watch:css` in a second terminal while
+editing styles. The generated stylesheet is not committed.
+
+The month arrows include the month after the roster and at least the next calendar
+month. Dates without roster data allow events but cannot edit a missing CSV shift.
+Events remain keyed by full date in the existing local cache and reminder sync, so
+uploading the next roster keeps those events. Run `npm.cmd test` for calendar and
+event persistence checks.
 
 ## Google Vision mini test
 

@@ -1,11 +1,3 @@
-@font-face {
-  font-family: "PT Serif";
-  src: url("assets/PTSerif-Regular.ttf") format("truetype");
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-}
-
 :root {
   --navy: #0a1724;
   --panel: #1b263c;

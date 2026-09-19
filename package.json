@@ -4,13 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node tools/build-public.mjs",
-    "dev": "node server.mjs",
+    "build:css": "tailwindcss -i styles/app.css -o assets/app.css --minify",
+    "watch:css": "tailwindcss -i styles/app.css -o assets/app.css --watch",
+    "build": "npm run build:css && node tools/build-public.mjs",
+    "dev": "npm run build:css && node server.mjs",
+    "test": "node --test tests/*.test.mjs",
     "dev:cloudflare": "npm run build && wrangler dev",
     "db:migrate:remote": "wrangler d1 migrations apply REMINDER_DB --remote --config wrangler.generated.jsonc",
     "deploy": "npm run build && node tools/prepare-cloudflare-config.mjs && npm run db:migrate:remote && wrangler deploy --config wrangler.generated.jsonc"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3",
     "wrangler": "^4.0.0"
   }
 }

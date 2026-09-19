@@ -4,4 +4,6 @@ node_modules/
 .dev.vars*
 .env*
 public/
+assets/app.css
+test-results/
 wrangler.generated.jsonc
