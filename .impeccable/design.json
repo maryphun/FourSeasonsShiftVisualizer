@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-20T06:25:00Z",
+  "title": "Design System: Schedule Photo Reader",
+  "extensions": {
+    "colorMeta": {
+      "canvas": { "role": "neutral", "displayName": "Night canvas" },
+      "surface": { "role": "neutral", "displayName": "Ledger surface" },
+      "accent": { "role": "primary", "displayName": "Action rose" },
+      "work": { "role": "secondary", "displayName": "Work mint" },
+      "leave": { "role": "tertiary", "displayName": "Leave apricot" },
+      "late": { "role": "tertiary", "displayName": "Late lavender" }
+    },
+    "typographyMeta": {
+      "shift": { "displayName": "Shift value", "purpose": "The selected day's primary read." },
+      "label": { "displayName": "Quiet label", "purpose": "Dates, field labels, and compact metadata." }
+    },
+    "shadows": [
+      { "name": "dialog", "value": "0 24px 80px #0007", "purpose": "Separates an active editor from the schedule." }
+    ],
+    "motion": [
+      { "name": "spring", "value": "cubic-bezier(.2, 1.12, .32, 1)", "purpose": "Brief pressed and carousel motion." },
+      { "name": "settle", "value": "cubic-bezier(.16, 1, .3, 1)", "purpose": "Quiet control transitions." }
+    ],
+    "breakpoints": [
+      { "name": "desktop", "value": "960px" },
+      { "name": "compact-phone", "value": "380px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button", "kind": "button", "refersTo": "button-primary", "description": "The single prominent action in an editor or upload step.",
+      "html": "<button class=\"ds-primary\">Save Shift</button>",
+      "css": ".ds-primary{height:42px;padding:0 18px;border:0;border-radius:8px;background:var(--color-accent);color:var(--color-canvas);font:650 14px Manrope,sans-serif;transition:background .16s,transform .22s}.ds-primary:hover{background:#f1c4d0}.ds-primary:active{transform:scale(.96)}.ds-primary:focus-visible{outline:2px solid var(--color-accent);outline-offset:3px}"
+    },
+    {
+      "name": "Secondary Button", "kind": "button", "refersTo": "button-secondary", "description": "A quiet utility command.",
+      "html": "<button class=\"ds-secondary\">Change</button>",
+      "css": ".ds-secondary{height:42px;padding:0 16px;border:1px solid var(--color-edge);border-radius:8px;background:var(--color-surface);color:var(--color-ink);font:650 13px Manrope,sans-serif;transition:background .16s,transform .22s}.ds-secondary:hover{background:var(--color-raised)}.ds-secondary:active{transform:scale(.96)}.ds-secondary:focus-visible{outline:2px solid var(--color-accent);outline-offset:3px}"
+    },
+    {
+      "name": "Day Card", "kind": "card", "refersTo": "day-card", "description": "Personal date and shift with context kept below the time.",
+      "html": "<article class=\"ds-day-card\"><small>TODAY <span>20-SEP</span></small><div><time>20<em>日</em></time><p><strong>14:00</strong><span>(CDT)</span></p></div><footer>5 other persons</footer></article>",
+      "css": ".ds-day-card{width:275px;height:190px;padding:14px;border:1px solid var(--color-work);border-radius:8px;background:var(--color-surface);color:var(--color-ink);font:600 13px Manrope,sans-serif;display:flex;flex-direction:column;justify-content:space-between}.ds-day-card small{color:var(--color-work);font-size:10px}.ds-day-card small span{float:right}.ds-day-card>div{display:flex;align-items:center;gap:16px}.ds-day-card time{display:flex;flex-direction:column;padding-right:14px;border-right:1px solid var(--color-edge);font-size:32px;color:var(--color-work)}.ds-day-card time em{font:500 13px Manrope,sans-serif}.ds-day-card p{margin:0;display:flex;flex-direction:column}.ds-day-card strong{font-size:42px;line-height:1.1;font-variant-numeric:tabular-nums}.ds-day-card p span,.ds-day-card footer{color:var(--color-work)}.ds-day-card footer{text-align:center;font-size:11px}"
+    },
+    {
+      "name": "Calendar Date", "kind": "chip", "refersTo": "calendar-date", "description": "Stable date cell; the active date carries the rose fill.",
+      "html": "<nav class=\"ds-calendar\"><button class=\"ds-date\">19</button><button class=\"ds-date ds-active\">20</button><button class=\"ds-date\">21</button></nav>",
+      "css": ".ds-calendar{display:flex;gap:4px}.ds-date{width:40px;height:40px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--color-ink);font:600 13px Manrope,sans-serif;transition:background .16s,transform .18s}.ds-date:hover{background:var(--color-raised);transform:translateY(-1px)}.ds-date:active{transform:scale(.94)}.ds-date.ds-active{background:var(--color-accent);color:var(--color-canvas)}.ds-date:focus-visible{outline:2px solid var(--color-accent);outline-offset:3px}"
+    },
+    {
+      "name": "Text Field", "kind": "input", "refersTo": "text-field", "description": "Dark input for short context and name editing.",
+      "html": "<input class=\"ds-field\" value=\"CDT\" aria-label=\"Context\">",
+      "css": ".ds-field{height:42px;width:220px;padding:0 12px;border:1px solid var(--color-edge);border-radius:6px;background:var(--color-canvas);color:var(--color-ink);font:500 16px Manrope,sans-serif;transition:border-color .16s}.ds-field:hover{border-color:var(--color-quiet)}.ds-field:focus-visible{outline:2px solid var(--color-accent);outline-offset:3px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Night Shift Ledger",
+    "overview": "A compact dark schedule that makes the selected personal shift the first read. Calendar, events, and statistics remain available but visually quieter; desktop opens the same ledger into two columns.",
+    "keyCharacteristics": ["Phone-first glance", "Flat tonal surfaces", "Semantic shift colors", "Tabular time and date numbers", "Brief spring motion"],
+    "rules": [
+      { "name": "The Glance Rule", "body": "Keep the selected date and shift readable without scrolling the phone's central schedule.", "section": "overview" },
+      { "name": "The Semantic Color Rule", "body": "Shift text communicates status; color reinforces it.", "section": "colors" },
+      { "name": "The Whole Month Rule", "body": "Fit every calendar week and summary in the phone schedule.", "section": "layout" },
+      { "name": "The Stable Card Rule", "body": "Date and shift changes do not reflow adjacent controls.", "section": "components" }
+    ],
+    "dos": ["Do prioritize the selected shift over statistics and administrative actions.", "Do keep the supplied panda stickers tied to shift status.", "Do keep the phone's central schedule static and fit six-week months."],
+    "donts": ["Don't add explanatory labels, decorative gradients, or floating section cards.", "Don't use color alone to communicate work, leave, late shifts, or selection."]
+  }
+}

@@ -27,16 +27,16 @@
   .day-carousel-viewport { height: 100%; min-height: 212px; mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent); }
   .day-shift-card {
     --shift-accent: var(--color-work);
-    width: min(calc(100% - 56px), 328px); max-width: 328px;
-    height: min(calc(100% - 12px), 256px); min-height: 200px;
-    padding: 18px; gap: 8px; border: 1px solid #c8d7d0; border-radius: 8px;
+    width: min(calc((100% - 56px) * .9), 295px); max-width: 295px;
+    height: min(calc((100% - 12px) * .9), 230px); min-height: 176px;
+    padding: 14px; gap: 6px; border: 1px solid #628773; border-radius: 8px;
     background: var(--color-surface); box-shadow: none;
-    grid-template-rows: 24px minmax(0, 1fr) 56px;
+    grid-template-rows: 22px minmax(0, 1fr) 52px;
   }
-  .day-shift-card.is-off { --shift-accent: var(--color-leave); background: #fff9fa; border-color: #e2cdd4; box-shadow: none; }
-  .day-shift-card.is-late { --shift-accent: var(--color-late); background: #f9faff; border-color: #cdd4e2; }
+  .day-shift-card.is-off { --shift-accent: var(--color-leave); background: #2c2926; border-color: #766251; box-shadow: none; }
+  .day-shift-card.is-late { --shift-accent: var(--color-late); background: #292a32; border-color: #625f78; }
   .day-shift-card.is-today { border-color: var(--shift-accent); }
-  .day-shift-panda { top: 12px; right: 14px; width: 42px; height: 56px; }
+  .day-shift-panda { top: 3px; right: 8px; width: 32px; height: 42px; }
   .day-shift-card.has-shift-art .day-card-topline { padding-right: 48px; }
   .day-card-topline span, .day-card-topline small,
   .day-shift-card.is-off .day-card-topline span, .day-shift-card.is-off .day-card-topline small {
@@ -54,7 +54,7 @@
   }
   .day-shift-display.is-long > strong { font-size: 1.375rem; line-height: 1.3; }
   .day-shift-display small, .day-shift-card.is-off .day-shift-display small { color: var(--shift-accent); font-size: .8125rem; font-weight: 600; line-height: 1.4; }
-  .day-card-action { min-height: 56px; grid-template-rows: 20px 32px; gap: 4px; }
+  .day-card-action { min-height: 52px; grid-template-rows: 18px 30px; gap: 4px; }
   .day-event-note, .day-shift-card.is-off .day-event-note { color: var(--shift-accent); font-size: .75rem; font-weight: 600; }
   .day-card-coworkers { min-height: 32px; width: 100%; }
   .coworker-button, .coworker-count-label,
@@ -83,7 +83,7 @@
   .day-pill.today { border-color: var(--color-accent); }
   .day-pill:hover:not(.active) { background: var(--color-raised); transform: translateY(-1px); }
   .day-pill:active { transform: scale(.94); }
-  .day-pill.active, .day-pill.leave.active { background: var(--color-accent); border-color: transparent; color: #fff; box-shadow: none; }
+  .day-pill.active, .day-pill.leave.active { background: var(--color-accent); border-color: transparent; color: var(--color-canvas); box-shadow: none; }
   .day-pill.is-unplanned:not(.active) { color: var(--color-quiet); }
   .calendar-shift-time { display: none; }
   .calendar-event-mark { position: absolute; bottom: 3px; width: 3px; height: 3px; border-radius: 50%; background: currentColor; }
@@ -106,8 +106,8 @@
     .month-label { font-size: 1.125rem; }
     .month-arrow { width: 40px; min-height: 40px; }
     .daily-focus { grid-template-rows: minmax(300px, 1fr) 44px; gap: 18px; }
-    .day-shift-card { width: min(calc(100% - 64px), 360px); max-width: 360px; min-height: 288px; height: min(calc(100% - 32px), 350px); padding: 26px; grid-template-rows: 28px minmax(0, 1fr) 64px; }
-    .day-shift-panda { top: 20px; right: 22px; width: 54px; height: 70px; }
+    .day-shift-card { width: min(calc((100% - 64px) * .9), 324px); max-width: 324px; min-height: 259px; height: min(calc((100% - 32px) * .9), 315px); padding: 24px; gap: 8px; grid-template-rows: 26px minmax(0, 1fr) 60px; }
+    .day-shift-panda { top: 12px; right: 18px; width: 48px; height: 62px; }
     .day-shift-card.has-shift-art .day-card-topline { padding-right: 62px; }
     .day-card-topline span, .day-card-topline small, .day-shift-card.is-off .day-card-topline span, .day-shift-card.is-off .day-card-topline small { font-size: .6875rem; }
     .day-card-main time, .day-shift-card.is-off .day-card-main time { width: 80px; height: 92px; flex-basis: 80px; }
@@ -134,12 +134,12 @@
     .schedule-person strong { font-size: .9375rem; }
     .schedule-actions .tool-button.slim { padding-inline: 5px; }
     .name-line { gap: 0; }
-    .day-shift-card { padding: 14px; width: calc(100% - 48px); }
+    .day-shift-card { padding: 14px; width: calc((100% - 48px) * .9); }
     .day-card-main { gap: 10px; }
     .day-card-main time, .day-shift-card.is-off .day-card-main time { flex-basis: 52px; width: 52px; padding-right: 10px; }
     .day-shift-display > strong, .day-shift-display.has-context > strong, .day-shift-card.is-off .day-shift-display > strong { font-size: 2.375rem; }
     .day-shift-display.is-long > strong { font-size: 1.125rem; }
-    .day-shift-panda { width: 34px; height: 44px; }
+    .day-shift-panda { top: 2px; width: 28px; height: 36px; }
     .add-event-button { font-size: .6875rem; gap: 4px; }
     .add-event-button svg { width: 16px; height: 16px; }
   }

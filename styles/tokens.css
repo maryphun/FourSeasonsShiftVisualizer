@@ -8,27 +8,27 @@
 
 @theme {
   --font-sans: "Manrope", "Segoe UI", -apple-system, sans-serif;
-  --color-canvas: #f4f5f7;
-  --color-surface: #ffffff;
-  --color-raised: #e9ebef;
-  --color-edge: #d9dde3;
-  --color-ink: #20242b;
-  --color-quiet: #606670;
-  --color-accent: #773c4f;
-  --color-accent-soft: #efe4e8;
-  --color-work: #306459;
-  --color-work-soft: #eaf2ee;
-  --color-leave: #814354;
-  --color-leave-soft: #f6ebee;
-  --color-late: #455575;
-  --color-late-soft: #e9edf4;
+  --color-canvas: #17191b;
+  --color-surface: #25282b;
+  --color-raised: #33373a;
+  --color-edge: #464b4e;
+  --color-ink: #f3f4f1;
+  --color-quiet: #b8c0c0;
+  --color-accent: #e4adbd;
+  --color-accent-soft: #48343d;
+  --color-work: #a5d8bd;
+  --color-work-soft: #304039;
+  --color-leave: #efc5aa;
+  --color-leave-soft: #41362f;
+  --color-late: #c8c2e7;
+  --color-late-soft: #363440;
   --ease-spring: cubic-bezier(.2, 1.12, .32, 1);
   --ease-settle: cubic-bezier(.16, 1, .3, 1);
 }
 
 @layer components {
   :root {
-    color-scheme: light;
+    color-scheme: dark;
     --navy: var(--color-canvas);
     --panel: var(--color-surface);
     --panel-2: var(--color-raised);
@@ -40,7 +40,7 @@
     --cell: var(--color-surface);
     --line: var(--color-edge);
     --muted: var(--color-quiet);
-    --danger: #a33345;
+    --danger: #efa9aa;
     --panel-border: var(--color-edge);
     --soft-border: var(--color-edge);
     --app-font: var(--font-sans);
@@ -48,7 +48,7 @@
     font-synthesis: none;
     -webkit-font-smoothing: antialiased;
   }
-  * { letter-spacing: 0; scrollbar-color: #b8bec7 transparent; scrollbar-width: thin; }
+  * { letter-spacing: 0; scrollbar-color: #777d80 transparent; scrollbar-width: thin; }
   ::selection { background: var(--color-accent-soft); color: var(--color-accent); }
   input, select, textarea { caret-color: var(--color-accent); accent-color: var(--color-accent); }
   button, input, select, textarea { font-family: var(--app-font); }

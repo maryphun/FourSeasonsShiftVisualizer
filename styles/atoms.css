@@ -10,8 +10,8 @@
     font-weight: 650;
     transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 220ms var(--ease-spring);
   }
-  .primary-button { background: var(--color-accent); border-color: transparent; color: #fff; font-size: .875rem; }
-  .primary-button:hover:not(:disabled) { background: #623040; border-color: transparent; box-shadow: none; }
+  .primary-button { background: var(--color-accent); border-color: transparent; color: var(--color-canvas); font-size: .875rem; }
+  .primary-button:hover:not(:disabled) { background: #f1c4d0; border-color: transparent; box-shadow: none; }
   .tool-button:hover:not(:disabled), .icon-button:hover:not(:disabled), .add-event-button:hover:not(:disabled), .ui-action:hover:not(:disabled) {
     background: var(--color-raised); border-color: var(--color-edge); box-shadow: none; color: var(--color-ink);
   }

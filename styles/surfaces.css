@@ -4,14 +4,24 @@
   .app-shell { max-width: 520px; max-height: 860px; gap: 12px; }
   .upload-panel, .profile-panel, .schedule-panel, .status-panel { width: 100%; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
   .schedule-panel { flex: 1 1 auto; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
-  .day-card-section { overflow-y: auto; overscroll-behavior: contain; }
+  .day-card-section { overflow: hidden; overscroll-behavior: none; }
+  @media (max-width: 959px) {
+    .day-card-section { grid-template-rows: auto minmax(0, 1fr) auto auto; }
+    .day-card-section.six-week-month { gap: 9px; }
+    .six-week-month .daily-focus { grid-template-rows: minmax(0, 1fr) 40px; }
+    .six-week-month .day-carousel-viewport { min-height: 0; }
+    .six-week-month .day-shift-card { min-height: 0; padding: 10px; gap: 4px; grid-template-rows: 20px minmax(0, 1fr) 44px; }
+    .six-week-month .day-card-main time, .six-week-month .day-shift-card.is-off .day-card-main time { height: 60px; }
+    .six-week-month .day-card-action { min-height: 44px; grid-template-rows: 14px 28px; gap: 2px; }
+    .six-week-month .day-card-coworkers, .six-week-month .coworker-button, .six-week-month .coworker-count-label { min-height: 28px; height: 28px; }
+  }
   .app-toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; gap: 8px; border-top: 1px solid var(--color-edge); padding-top: 10px; flex-shrink: 0; }
   .app-toolbar .tool-button { min-width: 0; width: 100%; background: transparent; border-color: transparent; color: var(--color-quiet); min-height: 40px; font-size: .625rem; font-weight: 600; padding-inline: 2px; gap: 6px; white-space: nowrap; }
   .app-toolbar .tool-button:hover { background: var(--color-raised); color: var(--color-ink); }
   .app-toolbar svg { width: 16px; height: 16px; }
 
-  .modal-backdrop { padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); background: #20242b66; backdrop-filter: blur(4px); }
-  .coworker-modal, .name-editor-modal { background: var(--color-surface); border: 0; border-radius: 8px; box-shadow: 0 24px 80px #20242b33; }
+  .modal-backdrop { padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); background: #090a0cbd; backdrop-filter: blur(4px); }
+  .coworker-modal, .name-editor-modal { background: var(--color-surface); border: 0; border-radius: 8px; box-shadow: 0 24px 80px #0007; }
   .coworker-modal-head { padding: 20px; border-color: var(--color-edge); }
   .coworker-modal-head strong { font-weight: 700; font-size: 1.125rem; line-height: 1.4; }
   .coworker-modal-head span { font-size: .6875rem; font-weight: 550; }
@@ -36,7 +46,7 @@
   .shift-editor-preview strong { font-size: 1rem; font-weight: 650; }
 
   .upload-empty { gap: 32px; }
-  .upload-thumbnail { width: 140px; height: 140px; border: 0; border-radius: 8px; box-shadow: 0 12px 28px #20242b22; }
+  .upload-thumbnail { width: 140px; height: 140px; border: 0; border-radius: 8px; box-shadow: 0 12px 28px #0005; }
   .upload-actions { gap: 12px; }
   .upload-return-button { background: transparent; }
   .upload-panel.is-dragging { background: var(--color-accent-soft); box-shadow: none; outline: 2px dashed var(--color-accent); }
@@ -79,9 +89,10 @@
     .daily-focus { grid-template-rows: 180px 36px; gap: 4px; }
     .day-event-tools, .add-event-button { min-height: 36px; height: 36px; }
     .day-carousel-viewport { min-height: 180px; }
-    .day-shift-card { height: 172px; min-height: 172px; padding-block: 10px; gap: 4px; grid-template-rows: 22px minmax(0, 1fr) 52px; }
+    .day-shift-card { height: 155px; min-height: 155px; padding: 8px; gap: 4px; grid-template-rows: 18px minmax(0, 1fr) 44px; }
     .day-card-main time, .day-shift-card.is-off .day-card-main time { height: 56px; }
-    .day-card-action { min-height: 52px; gap: 0; }
+    .day-card-action { min-height: 44px; grid-template-rows: 14px 28px; gap: 2px; }
+    .day-card-coworkers, .coworker-button, .coworker-count-label { min-height: 28px; height: 28px; }
     .day-pills { grid-template-rows: repeat(var(--calendar-weeks), 32px); }
     .summary-strip.monthly-summary { padding-top: 8px; gap: 8px 0; }
     .summary-strip .summary-item { flex-direction: row-reverse; align-items: center; justify-content: flex-end; gap: 6px; min-height: 24px; padding-inline: 8px; }
@@ -89,6 +100,11 @@
     .summary-item dt { font-size: .5625rem; }
     .app-toolbar { padding-top: 6px; }
     .app-toolbar .tool-button { min-height: 36px; }
+    .day-card-section.six-week-month { grid-template-rows: 32px minmax(0, 1fr) auto auto; gap: 4px; }
+    .six-week-month .daily-focus { grid-template-rows: minmax(0, 1fr) 36px; }
+    .six-week-month .day-shift-card { height: calc(100% - 2px); min-height: 0; }
+    .six-week-month .day-shift-display > strong, .six-week-month .day-shift-display.has-context > strong,
+    .six-week-month .day-shift-card.is-off .day-shift-display > strong { font-size: 2.125rem; }
   }
   @media (min-height: 821px) and (max-width: 959px) {
     .day-pills { grid-template-rows: repeat(var(--calendar-weeks), 40px); }

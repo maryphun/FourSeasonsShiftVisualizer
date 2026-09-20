@@ -29,14 +29,15 @@ shift data when necessary. The app is also installed on phones as a PWA.
 - Keep Japanese weekday labels in the daily date badge and the supplied panda assets.
 - Retain the existing Vue application, Tailwind v4 CLI build, and Cloudflare backend.
 - No new explanatory UI labels; keep the interface minimal and all existing actions available.
-- Keep the page viewport fixed, with contained scrolling when a small screen needs it.
+- Keep the phone schedule and page viewport fixed; only dialogs and editing surfaces may scroll when needed.
 - Preserve the explicit phone zoom restriction requested to prevent accidental zoom.
 - Do not commit, push, or deploy without an explicit instruction.
 
 ## Brand Commitments
 
 The supplied panda stickers and app icon are existing user-selected assets. The
-redesign should avoid generic SaaS dashboard styling.
+redesign should avoid generic SaaS dashboard styling. The user prefers a darker
+palette for the dashboard.
 
 ## Evidence on Hand
 
