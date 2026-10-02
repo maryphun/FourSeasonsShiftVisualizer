@@ -362,8 +362,7 @@
                   :title="activeShift.isPlaceholder ? 'Upload a shift photo' : 'Edit shift'"
                   @click="activeShift.isPlaceholder ? replacePhoto() : openShiftEditor(activeShift)"
                 >
-                  <i v-if="activeShift.isPlaceholder" data-lucide="image-plus"></i>
-                  <i v-else data-lucide="pencil"></i>
+                  <ui-icon :name="activeShift.isPlaceholder ? 'image-plus' : 'pencil'"></ui-icon>
                   <span>{{ activeShift.isPlaceholder ? "Upload" : "Edit" }}</span>
                 </button>
               </div>
