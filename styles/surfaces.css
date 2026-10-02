@@ -81,6 +81,20 @@
     .app-toolbar .tool-button { width: auto; padding-inline: 12px; font-size: .75rem; }
     .upload-panel { max-width: 520px; }
   }
+  @media (max-width: 959px) {
+    .schedule-panel { container-type: size; }
+    @container (max-height: 710px) {
+      .day-card-section { gap: 6px; padding-top: 6px; }
+      .day-pills { grid-template-rows: repeat(var(--calendar-weeks), 32px); }
+      .summary-strip.monthly-summary { padding-top: 8px; gap: 8px 0; }
+      .summary-strip .summary-item { flex-direction: row-reverse; align-items: center; justify-content: flex-end; gap: 6px; min-height: 24px; padding-inline: 8px; }
+      .summary-item dd { font-size: .9375rem; }
+      .summary-item dt { font-size: .5625rem; }
+      .day-card-section.six-week-month { grid-template-rows: 32px minmax(0, 1fr) auto auto; gap: 4px; }
+      .six-week-month .daily-focus { grid-template-rows: minmax(0, 1fr) 36px; }
+      .six-week-month .day-shift-card { height: calc(100% - 2px); min-height: 0; }
+    }
+  }
   @media (max-height: 740px) and (max-width: 959px) {
     .app-main { padding-block: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-bottom)); }
     .app-shell { gap: 8px; }
