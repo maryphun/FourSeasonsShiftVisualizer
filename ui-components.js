@@ -96,7 +96,7 @@
           :class="{ active: index === selectedIndex, today: day.dateKey === today, leave: day.leave, 'is-late': day.late, 'has-event': Boolean(day.event), 'is-unplanned': day.isPlaceholder }"
           :style="index === 0 ? { gridColumnStart: startColumn } : null" :aria-pressed="index === selectedIndex"
           :aria-current="day.dateKey === today ? 'date' : undefined"
-          :aria-label="[day.dateKey, day.isPlaceholder ? 'No roster' : day.main, day.context, day.event].filter(Boolean).join(': ')" type="button"
+          :aria-label="[day.dateKey, day.isPlaceholder ? 'No Data Detected' : day.main, day.context, day.event].filter(Boolean).join(': ')" type="button"
           @click="$emit('select', index)" @keydown="moveFocus($event, index)">
           <span class="calendar-day-number">{{ day.day }}</span>
           <span v-if="!day.isPlaceholder" class="calendar-shift-time" aria-hidden="true">{{ day.main }}</span>

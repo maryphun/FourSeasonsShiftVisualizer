@@ -625,6 +625,13 @@ createApp({
         this.cellReviewHints = reviewedOcr.reviewHints;
         const rosterDb = createRosterDatabase(this.table, this.selectedFile.name, this.cellReviewHints);
 
+        if (!rosterDb.dateColumns.length) {
+          this.showSpreadsheet = true;
+          this.statusText = "No date headers detected. Check the spreadsheet before saving.";
+          this.progress = 100;
+          return;
+        }
+
         if (!rosterDb.profiles.length) {
           this.showSpreadsheet = true;
           this.statusText = "Spreadsheet ready, but no worker profiles were found";
@@ -664,6 +671,10 @@ createApp({
       const sourceName = this.selectedFile?.name || this.rosterDb?.sourceFileName || "spreadsheet";
       this.cellReviewHints = pruneReviewHintsForTable(this.cellReviewHints, this.table);
       const rosterDb = createRosterDatabase(this.table, sourceName, this.cellReviewHints);
+      if (!rosterDb.dateColumns.length) {
+        this.statusText = "No date headers detected. Check the spreadsheet before saving.";
+        return;
+      }
       if (!rosterDb.profiles.length) {
         this.statusText = "No worker profiles were found in column A";
         return;
@@ -1965,6 +1976,7 @@ function inferDateColumns(table) {
     const bestRow = findRowWithMostDates(table);
     explicitColumns = collectDateColumnsFromRow(table[bestRow] || [], dayRow, width);
   }
+  if (!explicitColumns.length) return [];
 
   const firstExplicit = explicitColumns[0];
   const monthNumber =
@@ -2236,7 +2248,8 @@ function clampIndex(index, length) {
 function isProfileName(value) {
   const name = cleanProfileName(value);
   const normalized = normalizeProfileLabel(name);
-  return Boolean(name) && !["guest services", "day", "date"].includes(normalized);
+  const isDateHeader = /^(?:(?:date|day)\s+)?\d{1,2}\s*[-/. ]\s*(?:[a-z]{3,9}|\d{1,2})$/i.test(name);
+  return Boolean(name) && !isDateHeader && !["guest services", "day", "date"].includes(normalized);
 }
 
 function cleanProfileName(value) {
@@ -2653,7 +2666,9 @@ function detectTableGrid(canvas) {
   for (let y = tableY.start; y <= tableY.end; y += 1) {
     const rowOffset = y * width;
     for (let x = 0; x < width; x += 1) {
-      verticalCounts[x] += dark[rowOffset + x];
+      const offset = (rowOffset + x) * 4;
+      const gray = data[offset] * 0.299 + data[offset + 1] * 0.587 + data[offset + 2] * 0.114;
+      verticalCounts[x] += gray < 180 ? 1 : 0;
     }
   }
 

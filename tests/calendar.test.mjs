@@ -45,6 +45,72 @@ test("calendar preserves actual shifts and fills missing dates without declaring
   assert.equal(sandbox.isNonWorkingShift(days[0].value), false);
 });
 
+test("light gray vertical rules keep the name and first date in separate cells", () => {
+  const { sandbox } = appHarness();
+  const width = 260;
+  const height = 120;
+  const pixels = new Uint8ClampedArray(width * height * 4).fill(255);
+  const setPixel = (x, y, gray) => {
+    const offset = (y * width + x) * 4;
+    pixels[offset] = gray;
+    pixels[offset + 1] = gray;
+    pixels[offset + 2] = gray;
+  };
+  for (const x of [0, 110, 150, 190, 230, 259]) {
+    for (let y = 0; y < height; y += 1) setPixel(x, y, x === 110 ? 160 : 0);
+  }
+  for (const y of [0, 20, 40, 60, 80, 100, 119]) {
+    for (let x = 0; x < width; x += 1) setPixel(x, y, 0);
+  }
+  const canvas = { width, height, getContext: () => ({ getImageData: () => ({ data: pixels }) }) };
+  const grid = sandbox.detectTableGrid(canvas);
+  assert.equal(grid.isUsable, true);
+  assert.ok(grid.verticals.some((line) => Math.abs(line - 110) <= 1));
+
+  const words = [
+    { text: "Date", x0: 10, x1: 40, y0: 3, y1: 15 },
+    { text: "1-Oct", x0: 115, x1: 145, y0: 3, y1: 15 },
+    { text: "2-Oct", x0: 155, x1: 185, y0: 3, y1: 15 },
+    { text: "3-Oct", x0: 195, x1: 225, y0: 3, y1: 15 },
+    { text: "Day", x0: 10, x1: 40, y0: 23, y1: 35 },
+    { text: "Thu", x0: 115, x1: 140, y0: 23, y1: 35 },
+    { text: "Fri", x0: 155, x1: 178, y0: 23, y1: 35 },
+    { text: "Sat", x0: 195, x1: 220, y0: 23, y1: 35 },
+    { text: "Yukari (Bell)", x0: 10, x1: 90, y0: 43, y1: 55 },
+    { text: "14", x0: 117, x1: 135, y0: 43, y1: 55 },
+    { text: "14", x0: 157, x1: 175, y0: 43, y1: 55 },
+    { text: "OFF", x0: 197, x1: 225, y0: 43, y1: 55 },
+  ];
+  const table = sandbox.wordsToTable(words, grid);
+  assert.equal(table[0][0], "Date");
+  assert.equal(table[0][1], "1-Oct");
+  assert.equal(table[2][0], "Yukari (Bell)");
+  assert.equal(table[2][1], "14");
+  const prepared = sandbox.prepareOcrTableForSchedule(table);
+  const roster = sandbox.createRosterDatabase(prepared.table);
+  assert.equal(roster.month, 10);
+  assert.equal(roster.profiles.length, 1);
+  assert.equal(roster.profiles[0].name, "Yukari (Bell)");
+  assert.deepEqual(Array.from(roster.profiles[0].shifts.slice(0, 3), (shift) => shift.dateKey),
+    ["2026-10-01", "2026-10-02", "2026-10-03"]);
+  assert.deepEqual(Array.from(roster.profiles[0].shifts.slice(0, 3), (shift) => shift.value), ["14", "14", "OFF"]);
+});
+
+test("date-like row labels are not people and absent date headers are not invented", () => {
+  const { sandbox } = appHarness();
+  const mergedHeader = [
+    ["Date 1-Oct", "2-Oct", "3-Oct"],
+    ["Day Thu", "Fri", "Sat"],
+    ["Yukari (Bell) 14", "14", "OFF"],
+  ];
+  const prepared = sandbox.prepareOcrTableForSchedule(mergedHeader);
+  assert.equal(prepared.table[0][1], "2-Oct");
+  const roster = sandbox.createRosterDatabase(prepared.table);
+  assert.equal(roster.profiles.some((profile) => profile.name === "Date 1-Oct"), false);
+  assert.deepEqual(Array.from(sandbox.inferDateColumns([["Yukari", "14", "OFF"]])), []);
+  assert.equal(sandbox.createRosterDatabase([["Yukari", "14", "OFF"]]).profiles.length, 0);
+});
+
 test("calendar presentation preserves context, events and real monthly totals", () => {
   const { app } = appHarness();
   app.rosterDb = { year: 2026, month: 9, profiles: [{

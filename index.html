@@ -323,7 +323,7 @@
                     :key="`${item.slot}-${item.shift.dateKey || item.shift.dateLabel}`"
                     :shift="item.shift" :slot-name="item.slot" :appearance="shiftClass(item.shift)"
                     :panda="shiftPandaSrc(item.shift.value)" :relative="shiftRelativeLabel(item.shift)"
-                    :main="item.shift.isPlaceholder ? 'No roster' : displayShiftMain(item.shift.value)" :context="displayShiftContext(item.shift.value)"
+                    :main="item.shift.isPlaceholder ? 'No Data Detected' : displayShiftMain(item.shift.value)" :context="displayShiftContext(item.shift.value)"
                     :weekday="japaneseWeekdayLabel(item.shift.weekday)" :event-text="shiftEventText(item.shift)"
                     :coworkers="otherWorkingCount(item.shift)"
                     @navigate="handleDayCardClick" @coworkers="handleCoworkerButtonClick"></shift-card>
