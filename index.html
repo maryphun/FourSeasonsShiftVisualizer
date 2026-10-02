@@ -323,7 +323,7 @@
                     :key="`${item.slot}-${item.shift.dateKey || item.shift.dateLabel}`"
                     :shift="item.shift" :slot-name="item.slot" :appearance="shiftClass(item.shift)"
                     :panda="shiftPandaSrc(item.shift.value)" :relative="shiftRelativeLabel(item.shift)"
-                    :main="displayShiftMain(item.shift.value)" :context="displayShiftContext(item.shift.value)"
+                    :main="item.shift.isPlaceholder ? 'No roster' : displayShiftMain(item.shift.value)" :context="displayShiftContext(item.shift.value)"
                     :weekday="japaneseWeekdayLabel(item.shift.weekday)" :event-text="shiftEventText(item.shift)"
                     :coworkers="otherWorkingCount(item.shift)"
                     @navigate="handleDayCardClick" @coworkers="handleCoworkerButtonClick"></shift-card>
@@ -358,12 +358,13 @@
                 <button
                   class="add-event-button edit-day-button"
                   type="button"
-                  :disabled="activeShift.isPlaceholder || Boolean(dayTransitionDirection) || dayIsFastTraveling"
-                  :title="activeShift.isPlaceholder ? 'No roster for this date' : 'Edit shift'"
-                  @click="openShiftEditor(activeShift)"
+                  :disabled="Boolean(dayTransitionDirection) || dayIsFastTraveling"
+                  :title="activeShift.isPlaceholder ? 'Upload a shift photo' : 'Edit shift'"
+                  @click="activeShift.isPlaceholder ? replacePhoto() : openShiftEditor(activeShift)"
                 >
-                  <i data-lucide="pencil"></i>
-                  <span>Edit</span>
+                  <i v-if="activeShift.isPlaceholder" data-lucide="image-plus"></i>
+                  <i v-else data-lucide="pencil"></i>
+                  <span>{{ activeShift.isPlaceholder ? "Upload" : "Edit" }}</span>
                 </button>
               </div>
 

@@ -100,6 +100,43 @@ test("an older roster can reach next calendar month", () => {
   assert.equal(app.calendarMonthLabel, "Oct 2026");
 });
 
+test("cached and newly saved rosters open on today when that month is reachable", () => {
+  const { app, cache } = appHarness();
+  const roster = { version: 1, year: 2026, month: 9, dateColumns: [], profiles: [{ id: "me", shifts: [] }], rawTable: [] };
+  app.calendarToday = "2026-10-03";
+  app.setRosterDb(roster);
+  assert.equal(app.calendarMonthLabel, "Oct 2026");
+  assert.equal(app.activeShift.dateKey, "2026-10-03");
+  assert.equal(app.activeShift.isPlaceholder, true);
+  assert.equal(app.shiftClass(app.activeShift)["is-unplanned"], true);
+
+  const { app: restored, cache: restoredCache } = appHarness();
+  restored.calendarToday = "2026-10-03";
+  restoredCache.set("schedulePhotoReader.roster.v1", cache.get("schedulePhotoReader.roster.v1"));
+  restoredCache.set("schedulePhotoReader.profile.v1", "me");
+  restored.restoreCachedRoster();
+  assert.equal(restored.activeShift.dateKey, "2026-10-03");
+});
+
+test("a future roster opens on its own first date and a current roster opens on today", () => {
+  const { app } = appHarness();
+  app.calendarToday = "2026-10-03";
+  app.setRosterDb({ year: 2026, month: 11, profiles: [], rawTable: [] });
+  assert.equal(app.activeShift.dateKey, "2026-11-01");
+  app.selectedShiftIndex = 20;
+  app.setRosterDb({ year: 2026, month: 10, profiles: [], rawTable: [] });
+  assert.equal(app.activeShift.dateKey, "2026-10-03");
+});
+
+test("cached rosters without month metadata fall back to the current month", () => {
+  const { app, cache } = appHarness();
+  app.calendarToday = "2026-10-03";
+  cache.set("schedulePhotoReader.roster.v1", JSON.stringify({ version: 1, dateColumns: [], profiles: [] }));
+  app.restoreCachedRoster();
+  assert.equal(app.calendarMonthLabel, "Oct 2026");
+  assert.equal(app.activeShift.dateKey, "2026-10-03");
+});
+
 test("next-month events persist, sync, survive a roster upload, and can be edited or removed", () => {
   const { app, cache } = appHarness();
   app.rosterDb = { year: 2026, month: 9, profiles: [] };

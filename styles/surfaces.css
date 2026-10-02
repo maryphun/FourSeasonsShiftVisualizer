@@ -105,6 +105,7 @@
     .six-week-month .day-shift-card { height: calc(100% - 2px); min-height: 0; }
     .six-week-month .day-shift-display > strong, .six-week-month .day-shift-display.has-context > strong,
     .six-week-month .day-shift-card.is-off .day-shift-display > strong { font-size: 2.125rem; }
+    .six-week-month .day-shift-card.is-unplanned .day-shift-display > strong { font-size: 1.25rem; }
   }
   @media (min-height: 821px) and (max-width: 959px) {
     .day-pills { grid-template-rows: repeat(var(--calendar-weeks), 40px); }

@@ -102,7 +102,7 @@ createApp({
       pendingReplace: false,
       readError: false,
       runId: 0,
-      serverAuth: "not configured",
+      serverAuth: "unknown",
       googleApiKey: "",
       lastVersionCheckAt: 0,
       isRefreshingForVersion: false,
@@ -390,9 +390,6 @@ createApp({
     reviewHintCount() {
       return Object.keys(this.cellReviewHints).length;
     },
-    hasGoogleAuth() {
-      return this.serverAuth !== "not configured" || Boolean(this.googleApiKey.trim());
-    },
     needsCredential() {
       return this.serverAuth === "not configured" && !this.googleApiKey.trim();
     },
@@ -573,14 +570,6 @@ createApp({
       this.statusText = "Detecting table grid...";
 
       try {
-        await this.checkHealth();
-        if (!this.hasGoogleAuth) {
-          this.statusText = "Google Vision key is not configured";
-          this.progress = 0;
-          this.readError = true;
-          return;
-        }
-
         const image = await loadImage(this.previewUrl);
         if (activeRun !== this.runId) return;
 
@@ -611,6 +600,7 @@ createApp({
 
         const result = await response.json().catch(() => ({}));
         if (!response.ok) {
+          if (response.status === 401) this.serverAuth = "not configured";
           throw new Error(result.error || `Google Vision failed (${response.status})`);
         }
 
@@ -661,10 +651,11 @@ createApp({
     async checkHealth() {
       try {
         const response = await fetch("/api/health");
+        if (!response.ok) throw new Error(`Health check failed (${response.status})`);
         const result = await response.json();
-        this.serverAuth = result.googleAuth || "not configured";
+        this.serverAuth = result.googleAuth || "unknown";
       } catch {
-        this.serverAuth = "not configured";
+        this.serverAuth = "unknown";
       }
     },
     saveTableAsDatabase() {
@@ -683,8 +674,9 @@ createApp({
       this.statusText = `Roster saved with ${rosterDb.profiles.length} profiles`;
     },
     setRosterDb(rosterDb) {
-      this.calendarMonthOffset = 0;
       this.rosterDb = rosterDb;
+      this.openCalendarOnToday();
+      this.selectedShiftIndex = 0;
       this.table = padRows(rosterDb.rawTable || this.table);
       this.cellReviewHints = normalizeReviewHints(rosterDb.reviewHints);
       this.readError = false;
@@ -707,6 +699,7 @@ createApp({
       if (!isValidRosterDatabase(rosterDb)) return;
 
       this.rosterDb = rosterDb;
+      this.openCalendarOnToday();
       this.table = padRows(rosterDb.rawTable || []);
       this.cellReviewHints = normalizeReviewHints(rosterDb.reviewHints);
 
@@ -1462,6 +1455,7 @@ createApp({
     shiftClass(shift) {
       const type = getShiftType(shift.value);
       return {
+        "is-unplanned": Boolean(shift.isPlaceholder),
         "is-work": isWorkShift(shift.value),
         "is-off": isNonWorkingShift(shift.value),
         "is-morning": type === "morning",
@@ -1470,6 +1464,12 @@ createApp({
         "has-shift-art": Boolean(getShiftPandaSrc(shift.value)),
         "is-today": shift.dateKey === this.todayDateKey,
       };
+    },
+    openCalendarOnToday() {
+      const [year, month] = this.todayDateKey.split("-").map(Number);
+      const offset = (year - (this.rosterDb?.year || year)) * 12
+        + month - (this.rosterDb?.month || month);
+      this.calendarMonthOffset = Math.max(0, Math.min(offset, this.maxCalendarMonthOffset));
     },
     changeCalendarMonth(delta) {
       const offset = this.calendarMonthOffset + delta;

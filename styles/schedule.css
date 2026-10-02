@@ -35,7 +35,9 @@
   }
   .day-shift-card.is-off { --shift-accent: var(--color-leave); background: #2c2926; border-color: #766251; box-shadow: none; }
   .day-shift-card.is-late { --shift-accent: var(--color-late); background: #292a32; border-color: #625f78; }
+  .day-shift-card.is-unplanned { --shift-accent: var(--color-quiet); border-color: var(--color-edge); }
   .day-shift-card.is-today { border-color: var(--shift-accent); }
+  .day-shift-card.is-unplanned.is-today { border-color: var(--color-accent); }
   .day-shift-panda { top: 3px; right: 8px; width: 32px; height: 42px; }
   .day-shift-card.has-shift-art .day-card-topline { padding-right: 48px; }
   .day-card-topline span, .day-card-topline small,
@@ -53,6 +55,7 @@
     color: var(--color-ink); font-size: 2.625rem; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums;
   }
   .day-shift-display.is-long > strong { font-size: 1.375rem; line-height: 1.3; }
+  .day-shift-card.is-unplanned .day-shift-display > strong { font-size: 1.25rem; color: var(--color-quiet); }
   .day-shift-display small, .day-shift-card.is-off .day-shift-display small { color: var(--shift-accent); font-size: .8125rem; font-weight: 600; line-height: 1.4; }
   .day-card-action { min-height: 52px; grid-template-rows: 18px 30px; gap: 4px; }
   .day-event-note, .day-shift-card.is-off .day-event-note { color: var(--shift-accent); font-size: .75rem; font-weight: 600; }
